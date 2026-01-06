@@ -1,0 +1,10 @@
+ollama==0.6.0
+pdfplumber==0.11.7  # used for reading pdfs
+langchain
+langchain-community
+unstructured[pdf]
+langchain_ollama
+langchain_chroma
+chromadb
+docx2txt
+fastapi[standard-no-fastapi-cloud-cli]
