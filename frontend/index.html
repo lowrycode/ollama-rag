@@ -246,6 +246,150 @@
             margin-top: 6px;
             text-align: right;
         }
+        
+        .advanced-options {
+            padding: 5px 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.04) 100%);
+            border-radius: 10px;
+            border: 1.5px solid rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .advanced-options:hover {
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.12);
+        }
+        
+        .advanced-toggle {
+            cursor: pointer;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            user-select: none;
+            padding: 6px 0;
+            transition: all 0.2s ease;
+        }
+        
+        .advanced-toggle:hover {
+            color: #764ba2;
+            transform: translateX(2px);
+        }
+        
+        #toggleArrow {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        
+        .advanced-content {
+            display: none;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(102, 126, 234, 0.15);
+            animation: slideDown 0.3s ease;
+        }
+        
+        .advanced-content.visible {
+            display: block;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .option-group {
+            margin-bottom: 14px;
+        }
+        
+        .option-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: 0.3px;
+        }
+        
+        .option-value {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 700;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            min-width: 30px;
+            text-align: center;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #e8eaf6 0%, #e0e0e0 100%);
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        input[type="range"]:hover {
+            background: linear-gradient(to right, #e0dcf7 0%, #d8d8d8 100%);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+        
+        .option-help {
+            font-size: 11px;
+            color: #999;
+            margin-top: 6px;
+            font-style: italic;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -253,6 +397,22 @@
         <h1>🔍 RAG Query Assistant</h1>
         <form id="queryForm">
             <textarea name="question" id="question" placeholder="Ask a question about your documents..."></textarea>
+            <div class="advanced-options">
+                <div class="advanced-toggle" onclick="toggleAdvanced()">
+                    <span id="toggleArrow">▶</span>
+                    <span>Advanced Options</span>
+                </div>
+                <div class="advanced-content" id="advancedContent">
+                    <div class="option-group">
+                        <div class="option-label">
+                            <span>Document Fragments to Retrieve</span>
+                            <span class="option-value" id="topKValue">4</span>
+                        </div>
+                        <input type="range" id="topK" min="1" max="10" value="4" oninput="updateTopKDisplay()" title="Higher values retrieve more document fragments for better context but slower response">
+                        <div class="option-help">More fragments = better context but slower responses. Fewer fragments = faster but may miss information.</div>
+                    </div>
+                </div>
+            </div>
             <button type="submit">Search Documents</button>
             <div id="loadingPlaceholder">⏳ Searching documents and generating response...</div>
         </form>
@@ -266,7 +426,21 @@
     // Set default value
     document.getElementById("question").value = DEFAULT_QUESTION;
     
+    function toggleAdvanced() {
+        const content = document.getElementById("advancedContent");
+        const arrow = document.getElementById("toggleArrow");
+        content.classList.toggle("visible");
+        arrow.textContent = content.classList.contains("visible") ? "▼" : "▶";
+    }
+    
+    function updateTopKDisplay() {
+        const topK = document.getElementById("topK").value;
+        document.getElementById("topKValue").textContent = topK;
+    }
+    
     async function sendQuery(question, top_k=3) {
+        // Get top_k from the slider
+        const topK = parseInt(document.getElementById("topK").value) || 4;
         // Show loading placeholder
         document.getElementById("loadingPlaceholder").style.display = "block";
         document.getElementById("response").innerHTML = "";
@@ -278,7 +452,7 @@
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ question: question, top_k: top_k })  // send the message as JSON
+                body: JSON.stringify({ question: question, top_k: topK })
             });
 
             const data = await res.json();
