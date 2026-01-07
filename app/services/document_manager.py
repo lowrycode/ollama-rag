@@ -33,22 +33,29 @@ class DocumentManager:
 
     # Hash cache for tracking local file changes
     def _load_hash_cache(self):
+        logger.debug("Loading hash cache from %s", self.hash_cache_file)
         if self.hash_cache_file.exists():
             try:
                 with open(self.hash_cache_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    cache = json.load(f)
+                logger.debug("Loaded hash cache with %d entries", len(cache))
+                return cache
             except Exception:
                 logger.exception("Failed to load hash cache")
+        else:
+            logger.debug("No existing hash cache file found")
         return {}
 
     def _save_hash_cache(self):
         try:
             with open(self.hash_cache_file, "w", encoding="utf-8") as f:
                 json.dump(self.hash_cache, f, indent=2)
+            logger.debug("Hash cache saved with %d entries", len(self.hash_cache))
         except Exception:
             logger.exception("Failed to save hash cache")
 
     def _hash_documents(self, docs):
+        logger.debug("Hashing %d documents", len(docs))
         for d in docs:
             source = d.metadata.get("source", "")
             if not source:
@@ -73,6 +80,7 @@ class DocumentManager:
                 logger.exception("Error hashing file %s", source)
         # Save updated cache to disk
         self._save_hash_cache()
+        logger.debug("Completed hashing documents")
         return docs
 
     # Document loading and chunking
@@ -121,7 +129,14 @@ class DocumentManager:
                 except Exception:
                     logger.exception("Loader failed for %s", ldr)
                     continue
-                docs = self._merge_document_pages(docs)  # because loader splits by page
+
+                if not docs:
+                    logger.debug(
+                        "No documents found for loader with pattern %s", ldr.glob
+                    )
+                    continue
+
+                docs = self._merge_document_pages(docs)
                 docs = self._hash_documents(docs)
                 documents.extend(docs)
 
@@ -138,6 +153,15 @@ class DocumentManager:
         return documents
 
     def _merge_document_pages(self, docs):
+        logger.debug("Merging %d document pages", len(docs))
+
+        # Optional: check for missing source metadata
+        missing_source = [d for d in docs if not d.metadata.get("source")]
+        if missing_source:
+            logger.warning(
+                "Found %d documents without source metadata", len(missing_source)
+            )
+
         merged = defaultdict(list)
         metadata = {}
 
@@ -147,31 +171,35 @@ class DocumentManager:
             metadata.setdefault(src, d.metadata)
 
         return [
-            Document(
-                page_content="\n\n".join(pages),
-                metadata=metadata[src]
-            )
+            Document(page_content="\n\n".join(pages), metadata=metadata[src])
             for src, pages in merged.items()
         ]
 
     def _chunk_documents(self, documents):
-        logger.debug("- Chunking documents..")
+        logger.debug("- Chunking %d documents", len(documents))
         if not documents:
             logger.debug("- No documents were found to split into chunks")
             return []
 
         splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=300)
         chunks = splitter.split_documents(documents)
-        logger.debug("- Documents have been split into chunks")
+        logger.debug("- Documents have been split into %d chunks", len(chunks))
         return chunks
 
     # Vector DB operations
     def _get_embedding(self, emb_model):
         try:
             existing = ollama.list()
+            logger.debug(
+                "Available ollama models: %s", [m["model"] for m in existing["models"]]
+            )
             if emb_model not in [m["model"] for m in existing["models"]]:
+                logger.debug("Model %s not found locally, pulling...", emb_model)
                 ollama.pull(model=emb_model)
+            else:
+                logger.debug("Model %s found locally", emb_model)
         except Exception:
+            logger.debug("Exception checking ollama models, pulling %s", emb_model)
             ollama.pull(model=emb_model)
         return OllamaEmbeddings(model=emb_model)
 
@@ -339,29 +367,36 @@ class DocumentManager:
         # Remove
         if removed:
             for src, db_hash in removed:
+                logger.debug("Removing file from DB: %s with hash %s", src, db_hash)
                 self.vector_db.delete(where={"file_hash": db_hash})
                 self.hash_cache.pop(src, None)  # remove from cache
             self._save_hash_cache()  # update cache file
 
         if renamed:
             for _, db_hash, _ in renamed:
+                logger.debug("Removing renamed file hash from DB: %s", db_hash)
                 self.vector_db.delete(where={"file_hash": db_hash})
                 local_hash = db_hash
                 docs_to_add.append(local_doc_map[local_hash])
 
         if updated:
             for src, local_hash, db_hash in updated:
+                logger.debug(
+                    "Updating file %s in DB, removing old hash %s", src, db_hash
+                )
                 self.vector_db.delete(where={"file_hash": db_hash})
                 docs_to_add.append(local_doc_map[local_hash])
 
         if added:
             for _, local_hash in added:
+                logger.debug("Adding new file hash to DB: %s", local_hash)
                 docs_to_add.append(local_doc_map[local_hash])
 
         # Add
         if docs_to_add:
             chunks = self._chunk_documents(docs_to_add)
             self._add_chunks_to_db(chunks)
+            self._save_hash_cache()  # update cache file
 
         self.local_sync_changes = None
 
