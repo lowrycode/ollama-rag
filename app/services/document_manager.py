@@ -229,7 +229,17 @@ class DocumentManager:
             logger.debug("- No document chunks to add to DB")
             return
 
-        self.vector_db.add_documents(chunks)
+        BATCH_SIZE = 50
+
+        for i in range(0, len(chunks), BATCH_SIZE):
+            batch = chunks[i:i + BATCH_SIZE]
+            logger.info(
+                "Embedding chunks %d–%d of %d",
+                i + 1,
+                min(i + BATCH_SIZE, len(chunks)),
+                len(chunks),
+            )
+            self.vector_db.add_documents(batch)
         logger.debug("Added %d new document chunks to DB", len(chunks))
 
     # Local sync changes

@@ -9,9 +9,21 @@ from langchain_ollama import ChatOllama
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,  # change to DEBUG in dev
+    level=logging.DEBUG,  # change to DEBUG in dev
     format="%(levelname)-9s %(message)s"
 )
+THIRD_PARTY = [
+    "httpx",
+    "httpcore",
+    "chromadb",
+    "posthog",
+    "urllib3",
+    "ollama",
+]
+# Disable third party logs by reassigning level
+for name in THIRD_PARTY:
+    logging.getLogger(name).setLevel(logging.ERROR)
+
 logger = logging.getLogger(__name__)
 
 

@@ -10,5 +10,9 @@
   "C:\\code\\ollama-rag\\app\\data\\AQA-7404-7405-GCSE-A-LEVEL-PROGRESSION-ANSWERS.PDF": {
     "hash": "76038e49cb92b5aab719a11f3121f54dca42306e1114aecc8151144d18561adb",
     "mtime": 1762011031.2053263
+  },
+  "C:\\code\\ollama-rag\\app\\data\\A Course in Machine Learning (ciml-v0_9-all).pdf": {
+    "hash": "730418d6bbd03c72583fccd8ed3896b9bef20228840cecf9cfb9b90635a311ef",
+    "mtime": 1767818861.0918398
   }
 }
