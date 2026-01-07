@@ -27,9 +27,11 @@ class DocumentManager:
         self.hash_cache = self._load_hash_cache()
         self.documents = []
         self.vector_db = self._load_or_create_vector_db(VECTOR_DB_DIR)
-        self.db_sync = None
+        self.local_sync_changes = None
 
-    # Private Methods
+    # ----- Private Methods -----
+
+    # Hash cache for tracking local file changes
     def _load_hash_cache(self):
         if self.hash_cache_file.exists():
             try:
@@ -45,34 +47,6 @@ class DocumentManager:
                 json.dump(self.hash_cache, f, indent=2)
         except Exception:
             logger.exception("Failed to save hash cache")
-
-    def _add_chunks_to_db(self, chunks):
-        if not chunks:
-            logger.debug("- No document chunks to add to DB")
-            return
-
-        self.vector_db.add_documents(chunks)
-        logger.debug("Added %d new document chunks to DB", len(chunks))
-
-    def _chunk_documents(self, documents):
-        logger.debug("- Chunking documents...")
-        if not documents:
-            logger.debug("- No documents were found to split into chunks")
-            return []
-
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=300)
-        chunks = splitter.split_documents(documents)
-        logger.debug("- Documents have been split into chunks")
-        return chunks
-
-    def _get_embedding(self, emb_model):
-        try:
-            existing = ollama.list()
-            if emb_model not in [m["model"] for m in existing["models"]]:
-                ollama.pull(model=emb_model)
-        except Exception:
-            ollama.pull(model=emb_model)
-        return OllamaEmbeddings(model=emb_model)
 
     def _hash_documents(self, docs):
         for d in docs:
@@ -101,12 +75,13 @@ class DocumentManager:
         self._save_hash_cache()
         return docs
 
+    # Document loading and chunking
     def _load_documents(self, pdf=True, txt=True, docx=True):
         """
         Load all documents of specified formats within directory
         (including sub-directories)
         """
-        logger.debug("- Loading documents...")
+        logger.debug("- Loading documents..")
 
         pdf_loader = (
             DirectoryLoader(
@@ -179,18 +154,39 @@ class DocumentManager:
             for src, pages in merged.items()
         ]
 
+    def _chunk_documents(self, documents):
+        logger.debug("- Chunking documents..")
+        if not documents:
+            logger.debug("- No documents were found to split into chunks")
+            return []
+
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=300)
+        chunks = splitter.split_documents(documents)
+        logger.debug("- Documents have been split into chunks")
+        return chunks
+
+    # Vector DB operations
+    def _get_embedding(self, emb_model):
+        try:
+            existing = ollama.list()
+            if emb_model not in [m["model"] for m in existing["models"]]:
+                ollama.pull(model=emb_model)
+        except Exception:
+            ollama.pull(model=emb_model)
+        return OllamaEmbeddings(model=emb_model)
+
     def _load_or_create_vector_db(self, vector_db_dir, collection_name="simple-rag"):
         vector_db_dir = Path(vector_db_dir)
         if vector_db_dir.exists() and any(vector_db_dir.iterdir()):
-            logger.info("Loading existing vector db...")
+            logger.info("Loading existing vector db..")
             vector_db = Chroma(
                 embedding_function=self.embedding,
                 collection_name=collection_name,
                 persist_directory=vector_db_dir,
             )
-            logger.info("Vector database has been loaded")
+            logger.info("- Vector database has been loaded")
         else:
-            logger.info("Creating new vector db...")
+            logger.info("Creating new vector db..")
             vector_db = Chroma(
                 embedding_function=self.embedding,
                 collection_name=collection_name,
@@ -200,48 +196,17 @@ class DocumentManager:
 
         return vector_db
 
-    def _display_db_sync_summary(self):
-        logger.info("## SYNC SUMMARY ##")
-        in_sync = self.db_sync.get("in_sync", False)
-        if in_sync:
-            logger.info("Vector DB is in sync with local files")
-        else:
-            added = self.db_sync.get("added", [])
-            removed = self.db_sync.get("removed", [])
-            renamed = self.db_sync.get("renamed", [])
-            updated = self.db_sync.get("updated", [])
+    def _add_chunks_to_db(self, chunks):
+        if not chunks:
+            logger.debug("- No document chunks to add to DB")
+            return
 
-            logger.debug(
-                "The following changes were made to local files "
-                "and are not yet reflected in the DB:"
-            )
-            added_count = len(added)
-            if added_count > 0:
-                logger.debug("Added: %d", added_count)
-                for s, _ in added:
-                    logger.debug("- %s", s)
+        self.vector_db.add_documents(chunks)
+        logger.debug("Added %d new document chunks to DB", len(chunks))
 
-            removed_count = len(removed)
-            if removed_count > 0:
-                logger.debug("Removed: %d", removed_count)
-                for s, _ in removed:
-                    logger.debug("- %s", s)
-
-            renamed_count = len(renamed)
-            if renamed_count > 0:
-                logger.debug("Renamed: %d", renamed_count)
-                for new_s, _, s in renamed:
-                    logger.debug("- %s renamed as %s", s, new_s)
-
-            updated_count = len(updated)
-            if updated_count > 0:
-                logger.debug("Updated: %d", updated_count)
-                for s, _, _ in updated:
-                    logger.debug("- %s", s)
-
-    # Public methods
-    def check_db_sync(self, show_summary=True):
-        logger.info("Checking sync status...")
+    # Local sync changes
+    def _compute_local_sync_changes(self, show_summary):
+        logger.debug("Computing local sync changes")
         if not self.documents:
             self._load_documents()
 
@@ -295,42 +260,75 @@ class DocumentManager:
                 removed.append((db_src, db_hash))
 
         # Update sync status
-        db_sync = {
+        local_sync_changes = {
             "added": added,
             "removed": removed,
             "renamed": renamed,
             "updated": updated,
-            "in_sync": all(len(x) == 0 for x in [added, removed, renamed, updated]),
+            "has_changes": any([added, removed, renamed, updated]),
         }
-        self.db_sync = db_sync
+        self.local_sync_changes = local_sync_changes
 
-        # Log in_sync
-        in_sync = db_sync["in_sync"]
-        if in_sync:
-            logger.info("DB is in sync with local files")
-        else:
-            logger.info("DB is not in sync with local files")
-
+        # Show summary
         if show_summary:
-            self._display_db_sync_summary()
+            self._display_local_sync_changes_summary()
 
-        return in_sync
+        return local_sync_changes
 
-    def update_db_sync(self):
-        logger.info("Updating DB Sync")
-        if not self.db_sync:
-            self.check_db_sync(show_summary=False)
+    def _display_local_sync_changes_summary(self):
+        logger.info("## SYNC SUMMARY ##")
+        has_changes = self.local_sync_changes.get("has_changes", False)
+        if not has_changes:
+            logger.info("Vector DB is in sync with local files")
+        else:
+            added = self.local_sync_changes.get("added", [])
+            removed = self.local_sync_changes.get("removed", [])
+            renamed = self.local_sync_changes.get("renamed", [])
+            updated = self.local_sync_changes.get("updated", [])
 
-        in_sync = self.db_sync.get("in_sync", False)
-        if in_sync:
-            self.db_sync = None
-            logger.info("- DB is already in sync with local files")
+            logger.info(
+                "The following changes were made to local files "
+                "and are not yet reflected in the DB:"
+            )
+            added_count = len(added)
+            if added_count > 0:
+                logger.info("Added: %d", added_count)
+                for s, _ in added:
+                    logger.debug("- %s", s)
+
+            removed_count = len(removed)
+            if removed_count > 0:
+                logger.info("Removed: %d", removed_count)
+                for s, _ in removed:
+                    logger.debug("- %s", s)
+
+            renamed_count = len(renamed)
+            if renamed_count > 0:
+                logger.info("Renamed: %d", renamed_count)
+                for new_s, _, s in renamed:
+                    logger.debug("- %s renamed as %s", s, new_s)
+
+            updated_count = len(updated)
+            if updated_count > 0:
+                logger.info("Updated: %d", updated_count)
+                for s, _, _ in updated:
+                    logger.debug("- %s", s)
+
+    def _apply_local_sync_changes(self):
+        logger.debug("Applying local sync changes")
+        if not self.local_sync_changes:
+            self._compute_local_sync_changes(show_summary=False)
+
+        has_changes = self.local_sync_changes.get("has_changes", False)
+        if not has_changes:
+            self.local_sync_changes = None
+            logger.debug("DB is already in sync with local files")
             return
 
-        added = self.db_sync.get("added", [])
-        removed = self.db_sync.get("removed", [])
-        renamed = self.db_sync.get("renamed", [])
-        updated = self.db_sync.get("updated", [])
+        added = self.local_sync_changes.get("added", [])
+        removed = self.local_sync_changes.get("removed", [])
+        renamed = self.local_sync_changes.get("renamed", [])
+        updated = self.local_sync_changes.get("updated", [])
 
         local_doc_map = {
             d.metadata.get("file_hash", "unknown_hash"): d for d in self.documents
@@ -365,6 +363,30 @@ class DocumentManager:
             chunks = self._chunk_documents(docs_to_add)
             self._add_chunks_to_db(chunks)
 
-        self.db_sync = None
+        self.local_sync_changes = None
 
-        logger.info("DB is now in sync with local files")
+        logger.debug("Local sync changes have been applied")
+
+    # ----- Public methods -----
+    def is_in_sync(self, show_summary=False):
+        logger.info("Checking if local files are in sync with database..")
+        local_sync_changes = self._compute_local_sync_changes(show_summary=show_summary)
+
+        in_sync = not local_sync_changes["has_changes"]
+        if in_sync:
+            logger.info("- Database is in sync with local files")
+        else:
+            logger.info("- Changes to local files have been detected")
+        return in_sync
+
+    def sync(self, show_summary=False):
+        logger.info("Syncing local files with database..")
+        if not self.local_sync_changes:
+            self._compute_local_sync_changes(show_summary=show_summary)
+
+        if self.local_sync_changes["has_changes"]:
+            self._apply_local_sync_changes()
+            logger.info("Local changes have been synced with database")
+        else:
+            logger.info("Local files are already in-sync with database")
+            self.local_sync_changes = None
