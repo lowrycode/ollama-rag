@@ -1,4 +1,5 @@
 from pathlib import Path
+from collections import defaultdict
 import hashlib
 import json
 import ollama
@@ -6,6 +7,7 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import DirectoryLoader
+from langchain_core.documents import Document
 
 # from langchain_community.document_loaders import UnstructuredFileLoader
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
@@ -142,6 +144,7 @@ class DocumentManager:
                 except Exception as e:
                     print(f"Loader failed for {ldr}: {e}")
                     continue
+                docs = self._merge_document_pages(docs)  # because loader splits by page
                 docs = self._hash_documents(docs)
                 documents.extend(docs)
 
@@ -153,6 +156,23 @@ class DocumentManager:
 
         self.documents = documents
         return documents
+
+    def _merge_document_pages(self, docs):
+        merged = defaultdict(list)
+        metadata = {}
+
+        for d in docs:
+            src = d.metadata.get("source")
+            merged[src].append(d.page_content)
+            metadata.setdefault(src, d.metadata)
+
+        return [
+            Document(
+                page_content="\n\n".join(pages),
+                metadata=metadata[src]
+            )
+            for src, pages in merged.items()
+        ]
 
     def _load_or_create_vector_db(self, vector_db_dir, collection_name="simple-rag"):
         vector_db_dir = Path(vector_db_dir)
