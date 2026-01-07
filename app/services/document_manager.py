@@ -2,16 +2,18 @@ from pathlib import Path
 from collections import defaultdict
 import hashlib
 import json
+import logging
 import ollama
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_core.documents import Document
-
-# from langchain_community.document_loaders import UnstructuredFileLoader
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from app.config import DATA_DIR, CACHE_DIR, VECTOR_DB_DIR, EMBED_MODEL
+
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentManager:
@@ -33,34 +35,34 @@ class DocumentManager:
             try:
                 with open(self.hash_cache_file, "r", encoding="utf-8") as f:
                     return json.load(f)
-            except Exception as e:
-                print(f"Error loading hash_cache: {e}")
+            except Exception:
+                logger.exception("Failed to load hash cache")
         return {}
 
     def _save_hash_cache(self):
         try:
             with open(self.hash_cache_file, "w", encoding="utf-8") as f:
                 json.dump(self.hash_cache, f, indent=2)
-        except Exception as e:
-            print(f"Error saving hash_cache: {e}")
+        except Exception:
+            logger.exception("Failed to save hash cache")
 
     def _add_chunks_to_db(self, chunks):
         if not chunks:
-            print("- No document chunks to add to DB")
+            logger.debug("- No document chunks to add to DB")
             return
 
         self.vector_db.add_documents(chunks)
-        print(f"- Added {len(chunks)} new document chunks to DB.")
+        logger.debug("Added %d new document chunks to DB", len(chunks))
 
     def _chunk_documents(self, documents):
-        print("- Chunking documents...")
+        logger.debug("- Chunking documents...")
         if not documents:
-            print("- No documents were found to split into chunks")
+            logger.debug("- No documents were found to split into chunks")
             return []
 
         splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=300)
         chunks = splitter.split_documents(documents)
-        print("- Documents have been split into chunks")
+        logger.debug("- Documents have been split into chunks")
         return chunks
 
     def _get_embedding(self, emb_model):
@@ -92,9 +94,9 @@ class DocumentManager:
                     # Update cache
                     self.hash_cache[source] = {"hash": file_hash, "mtime": mtime}
                 d.metadata["file_hash"] = file_hash
-            except Exception as e:
+            except Exception:
                 d.metadata["file_hash"] = "unknown"
-                print(f"Error hashing file {source}: {e}")
+                logger.exception("Error hashing file %s", source)
         # Save updated cache to disk
         self._save_hash_cache()
         return docs
@@ -104,7 +106,7 @@ class DocumentManager:
         Load all documents of specified formats within directory
         (including sub-directories)
         """
-        print("- Loading documents...")
+        logger.debug("- Loading documents...")
 
         pdf_loader = (
             DirectoryLoader(
@@ -141,8 +143,8 @@ class DocumentManager:
             if ldr:
                 try:
                     docs = ldr.load()
-                except Exception as e:
-                    print(f"Loader failed for {ldr}: {e}")
+                except Exception:
+                    logger.exception("Loader failed for %s", ldr)
                     continue
                 docs = self._merge_document_pages(docs)  # because loader splits by page
                 docs = self._hash_documents(docs)
@@ -150,9 +152,12 @@ class DocumentManager:
 
         document_count = len(documents)
         if document_count == 0:
-            print("- No documents were found")
+            logger.debug("- No documents were found")
         else:
-            print(f"- Finished loading {document_count} documents/chunks")
+            logger.debug(
+                "Finished loading %d documents/chunks",
+                document_count,
+            )
 
         self.documents = documents
         return documents
@@ -177,66 +182,66 @@ class DocumentManager:
     def _load_or_create_vector_db(self, vector_db_dir, collection_name="simple-rag"):
         vector_db_dir = Path(vector_db_dir)
         if vector_db_dir.exists() and any(vector_db_dir.iterdir()):
-            print("\nLoading existing vector db...")
+            logger.info("Loading existing vector db...")
             vector_db = Chroma(
                 embedding_function=self.embedding,
                 collection_name=collection_name,
                 persist_directory=vector_db_dir,
             )
-            print("Vector database has been loaded")
+            logger.info("Vector database has been loaded")
         else:
-            print("\nCreating new vector db...")
+            logger.info("Creating new vector db...")
             vector_db = Chroma(
                 embedding_function=self.embedding,
                 collection_name=collection_name,
                 persist_directory=vector_db_dir,
             )
-            print("Vector database has been created")
+            logger.info("Vector database has been created")
 
         return vector_db
 
-    def _print_db_sync_summary(self):
-        print("\n## SYNC SUMMARY ##")
-        in_sync = self.db_sync.get("in_sync", [])
+    def _display_db_sync_summary(self):
+        logger.info("## SYNC SUMMARY ##")
+        in_sync = self.db_sync.get("in_sync", False)
         if in_sync:
-            print("- Vector DB is in sync with local files")
+            logger.info("Vector DB is in sync with local files")
         else:
             added = self.db_sync.get("added", [])
             removed = self.db_sync.get("removed", [])
             renamed = self.db_sync.get("renamed", [])
             updated = self.db_sync.get("updated", [])
 
-            print(
-                "- The following changes were made to local files "
+            logger.debug(
+                "The following changes were made to local files "
                 "and are not yet reflected in the DB:"
             )
             added_count = len(added)
             if added_count > 0:
-                print(f"\nAdded: {added_count}")
+                logger.debug("Added: %d", added_count)
                 for s, _ in added:
-                    print("-", s)
+                    logger.debug("- %s", s)
 
             removed_count = len(removed)
             if removed_count > 0:
-                print(f"\nRemoved: {removed_count}")
+                logger.debug("Removed: %d", removed_count)
                 for s, _ in removed:
-                    print("-", s)
+                    logger.debug("- %s", s)
 
             renamed_count = len(renamed)
             if renamed_count > 0:
-                print(f"\nRenamed: {renamed_count}")
+                logger.debug("Renamed: %d", renamed_count)
                 for new_s, _, s in renamed:
-                    print("-", f"{s} renamed as {new_s}")
+                    logger.debug("- %s renamed as %s", s, new_s)
 
             updated_count = len(updated)
             if updated_count > 0:
-                print(f"\nUpdated: {updated_count}")
+                logger.debug("Updated: %d", updated_count)
                 for s, _, _ in updated:
-                    print("-", s)
+                    logger.debug("- %s", s)
 
     # Public methods
     def check_db_sync(self, show_summary=True):
-        print("\nChecking sync status...")
+        logger.info("Checking sync status...")
         if not self.documents:
             self._load_documents()
 
@@ -289,6 +294,7 @@ class DocumentManager:
                 # db_source, db_hash
                 removed.append((db_src, db_hash))
 
+        # Update sync status
         db_sync = {
             "added": added,
             "removed": removed,
@@ -298,20 +304,27 @@ class DocumentManager:
         }
         self.db_sync = db_sync
 
-        if show_summary:
-            self._print_db_sync_summary()
+        # Log in_sync
+        in_sync = db_sync["in_sync"]
+        if in_sync:
+            logger.info("DB is in sync with local files")
+        else:
+            logger.info("DB is not in sync with local files")
 
-        return db_sync
+        if show_summary:
+            self._display_db_sync_summary()
+
+        return in_sync
 
     def update_db_sync(self):
-        print("\nUpdating DB Sync")
+        logger.info("Updating DB Sync")
         if not self.db_sync:
-            self.check_db_sync()
+            self.check_db_sync(show_summary=False)
 
         in_sync = self.db_sync.get("in_sync", False)
         if in_sync:
             self.db_sync = None
-            print("- DB is already in sync with local files")
+            logger.info("- DB is already in sync with local files")
             return
 
         added = self.db_sync.get("added", [])
@@ -354,4 +367,4 @@ class DocumentManager:
 
         self.db_sync = None
 
-        print("DB is now in sync with local files")
+        logger.info("DB is now in sync with local files")

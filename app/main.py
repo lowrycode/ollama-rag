@@ -1,9 +1,16 @@
+import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.services.document_manager import DocumentManager
 from app.services.retrieval import retrieve_context, generate_prompt_string
 from langchain_ollama import ChatOllama
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,  # change to DEBUG in dev
+    format="%(levelname)-9s %(message)s"
+)
 
 # Initialise app with middleware
 app = FastAPI()
