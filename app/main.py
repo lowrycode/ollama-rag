@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -11,9 +12,33 @@ logging.basicConfig(
     level=logging.INFO,  # change to DEBUG in dev
     format="%(levelname)-9s %(message)s"
 )
+logger = logging.getLogger(__name__)
+
+
+# Global variables
+dm: DocumentManager | None = None
+vector_db = None
+llm = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global dm, vector_db, llm
+
+    # Startup logic
+    logger.info("Loading Document Manager and LLM...")
+    dm = DocumentManager()
+    if not dm.is_in_sync():
+        dm.sync()
+    vector_db = dm.vector_db
+    llm = ChatOllama(model="llama3.2")
+
+    yield  # app is now running
+    # No shutdown logic
+
 
 # Initialise app with middleware
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # restrict after testing
@@ -21,12 +46,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Initialize DocumentManager and LLM once
-dm = DocumentManager()
-dm.update_db_sync()
-vector_db = dm.vector_db  # assumes vector DB is ready and loaded
-llm = ChatOllama(model="llama3.2")
 
 
 # Pydantic Schema
