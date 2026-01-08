@@ -30,9 +30,8 @@ class DocumentManager:
     - Chunk documents and embed them into a Chroma vector database
 
     This class is stateful and maintains:
-    - self.documents: currently loaded local documents
     - self.hash_cache: persisted mapping of file paths to hashes and mtimes
-    - self.local_sync_changes: computed diff between local files and the DB
+    - self.vector_db: a persistent Chroma vector database
     """
 
     def __init__(self):
@@ -42,9 +41,7 @@ class DocumentManager:
         cache_dir.mkdir(parents=True, exist_ok=True)
         self.hash_cache_file = cache_dir / "hash_cache.json"
         self.hash_cache = self._load_hash_cache()
-        self.documents = []
         self.vector_db = self._load_or_create_vector_db(VECTOR_DB_DIR)
-        self.local_sync_changes = None
 
     # ----- Private Methods -----
 
@@ -148,7 +145,6 @@ class DocumentManager:
         - Recursively loads supported file types
         - Merges multi-page documents into single documents per source file
         - Computes and attaches file hashes
-        - Stores the result in self.documents
 
         Args:
             pdf (bool): Whether to load PDF files.
@@ -219,7 +215,6 @@ class DocumentManager:
                 document_count,
             )
 
-        self.documents = documents
         return documents
 
     def _merge_document_pages(self, docs):
@@ -373,7 +368,7 @@ class DocumentManager:
         logger.debug("Added %d new document chunks to DB", len(chunks))
 
     # Local sync changes
-    def _compute_local_sync_changes(self, show_summary):
+    def _compute_local_sync_changes(self, documents, show_summary):
         """
         Compare local documents with the vector database and detect differences.
 
@@ -383,9 +378,8 @@ class DocumentManager:
         - Updated files (same path, different hash)
         - Renamed files (same hash, different path)
 
-        Results are stored in self.local_sync_changes.
-
         Args:
+            documents (list[Document]): Current local docs to compare against the DB.
             show_summary (bool): Whether to log a human-readable summary.
 
         Returns:
@@ -393,9 +387,6 @@ class DocumentManager:
         """
 
         logger.debug("Computing local sync changes")
-
-        if not self.documents:
-            self._load_documents()
 
         db_entries = self.vector_db.get()
 
@@ -409,7 +400,7 @@ class DocumentManager:
             d.metadata.get("source", "unknown_source"): d.metadata.get(
                 "file_hash", "unknown_hash"
             )
-            for d in self.documents
+            for d in documents
             if "source" in d.metadata and "file_hash" in d.metadata
         }
 
@@ -454,30 +445,32 @@ class DocumentManager:
             "updated": updated,
             "has_changes": any([added, removed, renamed, updated]),
         }
-        self.local_sync_changes = local_sync_changes
 
         # Show summary
         if show_summary:
-            self._display_local_sync_changes_summary()
+            self._display_local_sync_changes_summary(local_sync_changes)
 
         return local_sync_changes
 
-    def _display_local_sync_changes_summary(self):
+    def _display_local_sync_changes_summary(self, local_sync_changes):
         """
         Log a human-readable summary of detected local sync changes.
 
         Intended for informational output during startup or manual sync checks.
+
+        Args:
+            local_sync_changes (dict): Output of `_compute_local_sync_changes`.
         """
 
         logger.info("## SYNC SUMMARY ##")
-        has_changes = self.local_sync_changes.get("has_changes", False)
+        has_changes = local_sync_changes.get("has_changes", False)
         if not has_changes:
             logger.info("Vector DB is in sync with local files")
         else:
-            added = self.local_sync_changes.get("added", [])
-            removed = self.local_sync_changes.get("removed", [])
-            renamed = self.local_sync_changes.get("renamed", [])
-            updated = self.local_sync_changes.get("updated", [])
+            added = local_sync_changes.get("added", [])
+            removed = local_sync_changes.get("removed", [])
+            renamed = local_sync_changes.get("renamed", [])
+            updated = local_sync_changes.get("updated", [])
 
             logger.info(
                 "The following changes were made to local files "
@@ -507,7 +500,7 @@ class DocumentManager:
                 for s, _, _ in updated:
                     logger.debug("- %s", s)
 
-    def _apply_local_sync_changes(self):
+    def _apply_local_sync_changes(self, documents, local_sync_changes):
         """
         Apply detected local sync changes to the vector database.
 
@@ -520,26 +513,25 @@ class DocumentManager:
         Side effects:
         - Mutates the vector database
         - Updates and persists the hash cache
-        - Clears self.local_sync_changes
+
+        Args:
+            documents (list[Document]): Current local documents.
+            local_sync_changes (dict): Precomputed sync changes to apply.
         """
 
         logger.debug("Applying local sync changes")
-        if not self.local_sync_changes:
-            self._compute_local_sync_changes(show_summary=False)
-
-        has_changes = self.local_sync_changes.get("has_changes", False)
+        has_changes = local_sync_changes.get("has_changes", False)
         if not has_changes:
-            self.local_sync_changes = None
             logger.debug("DB is already in sync with local files")
             return
 
-        added = self.local_sync_changes.get("added", [])
-        removed = self.local_sync_changes.get("removed", [])
-        renamed = self.local_sync_changes.get("renamed", [])
-        updated = self.local_sync_changes.get("updated", [])
+        added = local_sync_changes.get("added", [])
+        removed = local_sync_changes.get("removed", [])
+        renamed = local_sync_changes.get("renamed", [])
+        updated = local_sync_changes.get("updated", [])
 
         local_doc_map = {
-            d.metadata.get("file_hash", "unknown_hash"): d for d in self.documents
+            d.metadata.get("file_hash", "unknown_hash"): d for d in documents
         }
 
         docs_to_add = []
@@ -578,8 +570,6 @@ class DocumentManager:
             self._add_chunks_to_db(chunks)
             self._save_hash_cache()  # update cache file
 
-        self.local_sync_changes = None
-
         logger.debug("Local sync changes have been applied")
 
     # ----- Public methods -----
@@ -595,7 +585,10 @@ class DocumentManager:
         """
 
         logger.info("Checking if local files are in sync with database..")
-        local_sync_changes = self._compute_local_sync_changes(show_summary=show_summary)
+        documents = self._load_documents()
+        local_sync_changes = self._compute_local_sync_changes(
+            documents=documents, show_summary=show_summary
+        )
 
         in_sync = not local_sync_changes["has_changes"]
         if in_sync:
@@ -616,12 +609,15 @@ class DocumentManager:
         """
 
         logger.info("Syncing local files with database..")
-        if not self.local_sync_changes:
-            self._compute_local_sync_changes(show_summary=show_summary)
+        documents = self._load_documents()
+        local_sync_changes = self._compute_local_sync_changes(
+            documents=documents, show_summary=show_summary
+        )
 
-        if self.local_sync_changes["has_changes"]:
-            self._apply_local_sync_changes()
+        if local_sync_changes["has_changes"]:
+            self._apply_local_sync_changes(
+                documents=documents, local_sync_changes=local_sync_changes
+            )
             logger.info("Local changes have been synced with database")
         else:
             logger.info("Local files are already in-sync with database")
-            self.local_sync_changes = None
