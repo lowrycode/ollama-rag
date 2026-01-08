@@ -17,6 +17,23 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentManager:
+    """
+    Manages local document ingestion, hashing, and synchronization with a vector
+    database.
+
+    Responsibilities:
+    - Load documents from the local data directory
+    - Merge multi-page documents
+    - Hash files and maintain a persistent hash cache
+    - Detect differences between local files and the vector DB
+    - Apply incremental sync changes (add, remove, update, rename)
+    - Chunk documents and embed them into a Chroma vector database
+
+    This class is stateful and maintains:
+    - self.documents: currently loaded local documents
+    - self.hash_cache: persisted mapping of file paths to hashes and mtimes
+    - self.local_sync_changes: computed diff between local files and the DB
+    """
 
     def __init__(self):
         self.embedding = self._get_embedding(EMBED_MODEL)
@@ -33,6 +50,18 @@ class DocumentManager:
 
     # Hash cache for tracking local file changes
     def _load_hash_cache(self):
+        """
+        Load the persisted file hash cache from disk.
+
+        The hash cache maps file paths to:
+        - SHA-256 hash of file contents
+        - Last modification time (mtime)
+
+        Returns:
+            dict: Cached hash metadata keyed by file path.
+                Returns an empty dict if the cache does not exist or fails to load.
+        """
+
         logger.debug("Loading hash cache from %s", self.hash_cache_file)
         if self.hash_cache_file.exists():
             try:
@@ -47,6 +76,13 @@ class DocumentManager:
         return {}
 
     def _save_hash_cache(self):
+        """
+        Persist the in-memory hash cache to disk.
+
+        This should be called whenever the hash cache is modified
+        (e.g. after hashing new files or removing deleted files).
+        """
+
         try:
             with open(self.hash_cache_file, "w", encoding="utf-8") as f:
                 json.dump(self.hash_cache, f, indent=2)
@@ -55,6 +91,26 @@ class DocumentManager:
             logger.exception("Failed to save hash cache")
 
     def _hash_documents(self, docs):
+        """
+        Compute and attach file hashes to document metadata.
+
+        For each document:
+        - Uses the source file path from metadata
+        - Reuses cached hashes if the file mtime is unchanged
+        - Otherwise computes a new SHA-256 hash
+        - Stores the hash in document.metadata["file_hash"]
+
+        Side effects:
+        - Updates self.hash_cache
+        - Persists the hash cache to disk
+
+        Args:
+            docs (list[Document]): Documents whose source files should be hashed.
+
+        Returns:
+            list[Document]: The same documents with updated metadata.
+        """
+
         logger.debug("Hashing %d documents", len(docs))
         for d in docs:
             source = d.metadata.get("source", "")
@@ -86,9 +142,23 @@ class DocumentManager:
     # Document loading and chunking
     def _load_documents(self, pdf=True, txt=True, docx=True):
         """
-        Load all documents of specified formats within directory
-        (including sub-directories)
+        Load documents from the data directory and prepare them for syncing.
+
+        This method:
+        - Recursively loads supported file types
+        - Merges multi-page documents into single documents per source file
+        - Computes and attaches file hashes
+        - Stores the result in self.documents
+
+        Args:
+            pdf (bool): Whether to load PDF files.
+            txt (bool): Whether to load text files.
+            docx (bool): Whether to load Word documents.
+
+        Returns:
+            list[Document]: Loaded and processed documents.
         """
+
         logger.debug("- Loading documents..")
 
         pdf_loader = (
@@ -153,6 +223,19 @@ class DocumentManager:
         return documents
 
     def _merge_document_pages(self, docs):
+        """
+        Merge multiple document pages into a single document per source file.
+
+        Documents are grouped by their 'source' metadata field.
+        Page contents are concatenated with double newlines.
+
+        Args:
+            docs (list[Document]): Page-level documents.
+
+        Returns:
+            list[Document]: One document per source file.
+        """
+
         logger.debug("Merging %d document pages", len(docs))
 
         # Optional: check for missing source metadata
@@ -176,6 +259,19 @@ class DocumentManager:
         ]
 
     def _chunk_documents(self, documents):
+        """
+        Split documents into overlapping text chunks for embedding.
+
+        Uses a RecursiveCharacterTextSplitter with fixed chunk size
+        and overlap to preserve context.
+
+        Args:
+            documents (list[Document]): Documents to split.
+
+        Returns:
+            list[Document]: Chunked documents ready for embedding.
+        """
+
         logger.debug("- Chunking %d documents", len(documents))
         if not documents:
             logger.debug("- No documents were found to split into chunks")
@@ -188,6 +284,19 @@ class DocumentManager:
 
     # Vector DB operations
     def _get_embedding(self, emb_model):
+        """
+        Initialize and return an Ollama embedding model.
+
+        Ensures the requested model is available locally,
+        pulling it if necessary.
+
+        Args:
+            emb_model (str): Ollama embedding model name.
+
+        Returns:
+            OllamaEmbeddings: Embedding function for vector DB usage.
+        """
+
         try:
             existing = ollama.list()
             logger.debug(
@@ -204,6 +313,17 @@ class DocumentManager:
         return OllamaEmbeddings(model=emb_model)
 
     def _load_or_create_vector_db(self, vector_db_dir, collection_name="simple-rag"):
+        """
+        Load an existing Chroma vector database or create a new one.
+
+        Args:
+            vector_db_dir (str | Path): Directory for persisted vector DB data.
+            collection_name (str): Name of the Chroma collection.
+
+        Returns:
+            Chroma: Initialized vector database instance.
+        """
+
         vector_db_dir = Path(vector_db_dir)
         if vector_db_dir.exists() and any(vector_db_dir.iterdir()):
             logger.info("Loading existing vector db..")
@@ -225,6 +345,16 @@ class DocumentManager:
         return vector_db
 
     def _add_chunks_to_db(self, chunks):
+        """
+        Add document chunks to the vector database in batches.
+
+        Chunks are embedded and inserted in fixed-size batches
+        to improve performance and provide progress visibility.
+
+        Args:
+            chunks (list[Document]): Chunked documents to add.
+        """
+
         if not chunks:
             logger.debug("- No document chunks to add to DB")
             return
@@ -232,7 +362,7 @@ class DocumentManager:
         BATCH_SIZE = 50
 
         for i in range(0, len(chunks), BATCH_SIZE):
-            batch = chunks[i:i + BATCH_SIZE]
+            batch = chunks[i : i + BATCH_SIZE]
             logger.info(
                 "Embedding chunks %d–%d of %d",
                 i + 1,
@@ -244,7 +374,26 @@ class DocumentManager:
 
     # Local sync changes
     def _compute_local_sync_changes(self, show_summary):
+        """
+        Compare local documents with the vector database and detect differences.
+
+        Detects:
+        - Added files
+        - Removed files
+        - Updated files (same path, different hash)
+        - Renamed files (same hash, different path)
+
+        Results are stored in self.local_sync_changes.
+
+        Args:
+            show_summary (bool): Whether to log a human-readable summary.
+
+        Returns:
+            dict: A dictionary describing detected changes and sync status.
+        """
+
         logger.debug("Computing local sync changes")
+
         if not self.documents:
             self._load_documents()
 
@@ -314,6 +463,12 @@ class DocumentManager:
         return local_sync_changes
 
     def _display_local_sync_changes_summary(self):
+        """
+        Log a human-readable summary of detected local sync changes.
+
+        Intended for informational output during startup or manual sync checks.
+        """
+
         logger.info("## SYNC SUMMARY ##")
         has_changes = self.local_sync_changes.get("has_changes", False)
         if not has_changes:
@@ -353,6 +508,21 @@ class DocumentManager:
                     logger.debug("- %s", s)
 
     def _apply_local_sync_changes(self):
+        """
+        Apply detected local sync changes to the vector database.
+
+        This method:
+        - Removes deleted or renamed documents
+        - Re-adds updated or renamed documents
+        - Adds newly discovered documents
+        - Updates the hash cache accordingly
+
+        Side effects:
+        - Mutates the vector database
+        - Updates and persists the hash cache
+        - Clears self.local_sync_changes
+        """
+
         logger.debug("Applying local sync changes")
         if not self.local_sync_changes:
             self._compute_local_sync_changes(show_summary=False)
@@ -414,6 +584,16 @@ class DocumentManager:
 
     # ----- Public methods -----
     def is_in_sync(self, show_summary=False):
+        """
+        Check whether local files are in sync with the vector database.
+
+        Args:
+            show_summary (bool): Whether to log a sync summary.
+
+        Returns:
+            bool: True if no differences are detected, False otherwise.
+        """
+
         logger.info("Checking if local files are in sync with database..")
         local_sync_changes = self._compute_local_sync_changes(show_summary=show_summary)
 
@@ -425,6 +605,16 @@ class DocumentManager:
         return in_sync
 
     def sync(self, show_summary=False):
+        """
+        Synchronize local files with the vector database.
+
+        If changes are detected, applies them incrementally.
+        Otherwise, logs that the database is already up to date.
+
+        Args:
+            show_summary (bool): Whether to log a sync summary.
+        """
+
         logger.info("Syncing local files with database..")
         if not self.local_sync_changes:
             self._compute_local_sync_changes(show_summary=show_summary)
