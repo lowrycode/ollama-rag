@@ -32,7 +32,7 @@
         
         h1 {
             color: #333;
-            margin-bottom: 30px;
+            margin-bottom: 0px;
             font-size: 28px;
             text-align: center;
         }
@@ -390,11 +390,70 @@
             font-style: italic;
             line-height: 1.4;
         }
+        /* Sync button + status pill styles */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .sync-btn--subtle {
+            padding: 6px 8px;
+            font-size: 14px;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid rgba(15, 23, 42, 0.06);
+            color: #374151;
+            cursor: pointer;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sync-btn--subtle:hover {
+            background: rgba(102, 126, 234, 0.03);
+            border-color: rgba(102, 126, 234, 0.12);
+        }
+
+        .status-pill {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #9ca3af;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .status-pill:hover {
+            transform: scale(1.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .status-pill.in { background: #059669; }
+        .status-pill.out { background: #d97706; }
+        .status-pill.err { background: #dc2626; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔍 RAG Query Assistant</h1>
+        <div class="header">
+            <h1>🔍 RAG Query Assistant</h1>
+            <div class="header-controls">
+                <button type="button" id="checkSyncBtn" class="sync-btn--subtle" title="Check sync status">🔄</button>
+                <div id="syncStatus" aria-live="polite" class="status-pill" title="Sync status: unknown"></div>
+            </div>
+        </div>
         <form id="queryForm">
             <textarea name="question" id="question" placeholder="Ask a question about your documents..."></textarea>
             <div class="advanced-options">
@@ -421,6 +480,7 @@
 </body>
 <script>
     const END_POINT = "http://127.0.0.1:8000/query";
+    const SYNC_ENDPOINT = "http://127.0.0.1:8000/sync/check";
     const DEFAULT_QUESTION = "What is a dative covalent bond";
     
     // Set default value
@@ -470,6 +530,44 @@
         const question = document.getElementById("question").value;
         sendQuery(question);
     });
+
+    // Wire check sync button
+    document.getElementById("checkSyncBtn").addEventListener("click", function() {
+        checkSync();
+    });
+
+    async function checkSync() {
+        const statusEl = document.getElementById("syncStatus");
+        const btn = document.getElementById("checkSyncBtn");
+        const origBtn = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⏳';
+        statusEl.className = 'status-pill';
+        statusEl.title = 'Sync status: checking...';
+
+        try {
+            const res = await fetch(SYNC_ENDPOINT, { method: "POST" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data && data.is_in_sync === true) {
+                statusEl.className = 'status-pill in';
+                statusEl.title = 'Sync status: in sync ✓';
+            } else if (data && data.is_in_sync === false) {
+                statusEl.className = 'status-pill out';
+                statusEl.title = 'Sync status: out of sync';
+            } else {
+                statusEl.className = 'status-pill err';
+                statusEl.title = 'Sync status: unknown';
+            }
+        } catch (err) {
+            console.error(err);
+            statusEl.className = 'status-pill err';
+            statusEl.title = 'Sync status: error';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origBtn;
+        }
+    }
 
     // Format and display API response
     function displayResponse(data) {
