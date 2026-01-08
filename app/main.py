@@ -9,7 +9,7 @@ from langchain_ollama import ChatOllama
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,  # change to DEBUG in dev
+    level=logging.DEBUG,  # change to INFO in deployment
     format="%(levelname)-9s %(message)s"
 )
 THIRD_PARTY = [
@@ -40,10 +40,9 @@ async def lifespan(app: FastAPI):
     # Startup logic
     logger.info("Loading Document Manager and LLM...")
     dm = DocumentManager()
-    if not dm.is_in_sync():
-        dm.sync()
     vector_db = dm.vector_db
     llm = ChatOllama(model="llama3.2")
+    logger.debug("Finished loading Document Manager and LLM")
 
     yield  # app is now running
     # No shutdown logic
@@ -53,7 +52,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restrict after testing
+    allow_origins=["*"],  # restrict in deployment
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -75,6 +74,10 @@ class SourceItem(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
     sources: list[SourceItem]
+
+
+class SyncCheckResponse(BaseModel):
+    is_in_sync: bool
 
 
 # Endpoint functions
@@ -105,8 +108,20 @@ async def query_with_context(req: QueryRequest):
             "sources": sources,
         }
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Query failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/sync/check", response_model=SyncCheckResponse)
+async def check_sync_status():
+    return {"is_in_sync": dm.is_in_sync(show_summary=False)}
+
+
+@app.post("/sync/update", status_code=201, response_model=SyncCheckResponse)
+async def sync_documents():
+    dm.sync(show_summary=False)
+    return {"is_in_sync": dm.is_in_sync(show_summary=False)}
 
 
 @app.get("/health")
