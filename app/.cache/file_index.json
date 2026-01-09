@@ -1,5 +1,5 @@
 {
-  "last_synced_at": "2026-01-09T11:42:39+00:00",
+  "last_synced_at": "2026-01-09T14:42:48+00:00",
   "files": {
     "C:\\code\\ollama-rag\\app\\data\\AQA-7404-7405-GCSE-A-LEVEL-PROGRESSION-ANSWERS.PDF": {
       "file_id": "04783d0151e970cf097b4c93977107b3bcf8ad47",
@@ -21,10 +21,15 @@
       "mtime": 1767738837.3508966,
       "size": 2215244
     },
-    "C:\\code\\ollama-rag\\app\\data\\Critical Listening - O Lord My Rock and My Redeemer.pdf": {
-      "file_id": "5f37e604ccb74049737b9c8678f04c7954485aa3",
-      "mtime": 1761044850.6243227,
-      "size": 152670
+    "C:\\code\\ollama-rag\\app\\data\\Biography.txt": {
+      "file_id": "1e66c2d04b6f5ffc2204d6053fe1b71bde22d8b1",
+      "mtime": 1767965005.2601068,
+      "size": 439127
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Instrumental_Analysis_Topic_Guide.docx": {
+      "file_id": "9fb3b6d01f758660ea14f8b94adb8b43b7c23f64",
+      "mtime": 1767969676.2497566,
+      "size": 1835560
     }
   }
 }
