@@ -178,7 +178,7 @@ class DocumentManager:
             if suffix == ".pdf":
                 loader = PyPDFLoader(path)
             elif suffix == ".txt":
-                loader = TextLoader(path)
+                loader = TextLoader(path, encoding="utf-8")
             elif suffix == ".docx":
                 loader = Docx2txtLoader(path)
             else:
