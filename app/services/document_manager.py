@@ -2,6 +2,7 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Any
 from hashlib import sha1
+from datetime import datetime, timezone
 import json
 import logging
 import ollama
@@ -62,31 +63,47 @@ class DocumentManager:
         return sha1(path.encode()).hexdigest()
 
     # Metadata cache for tracking local file changes
-    def _load_file_index_cache(self) -> dict[str, dict[str, float]]:
+    def _load_file_index_cache(self) -> dict[str, Any]:
         """
         Load the persisted file metadata cache from a JSON file.
 
-        The metadata cache maps file paths to a dict containing:
-        - 'file_id': Unique file identifier by hashing the file path (str)
-        - 'mtime': Last modification time (float)
-        - 'size': File size in bytes (int)
+        The cache file stores a dictionary with the following structure:
+        {
+            "last_synced_at": str | None,  # ISO timestamp of the last sync, or None
+            "files": {
+                "<file_path>": {
+                    "file_id": str,  # Unique file identifier (SHA-1 of file path)
+                    "mtime": float,  # Last modification time (epoch timestamp)
+                    "size": int,     # File size in bytes
+                    # Additional metadata fields may be added in the future
+                },
+                ...
+            }
+        }
 
         Returns:
-            The metadata cache as a dictionary mapping file paths to their metadata.
-            Returns empty dictionary if the cache file does not exist or fails to load.
+            A dictionary containing:
+            - "last_synced_at": timestamp string or None
+            - "files": mapping of file paths to their metadata dictionaries
         """
         logger.debug("Loading file_index cache from %s", self.file_index_path)
         if self.file_index_path.exists():
             try:
                 with open(self.file_index_path, "r", encoding="utf-8") as f:
                     cache = json.load(f)
-                logger.debug("Loaded file_index with %d entries", len(cache))
-                return cache
+                return {
+                    "last_synced_at": cache.get("last_synced_at"),
+                    "files": cache.get("files", {}),
+                }
             except Exception:
                 logger.exception("Failed to load file_index cache")
         else:
             logger.debug("No existing file_index cache file found")
-        return {}
+
+        return {
+            "last_synced_at": None,
+            "files": {},
+        }
 
     def _save_metadata_cache(self) -> None:
         """
@@ -98,9 +115,16 @@ class DocumentManager:
         try:
             with open(self.file_index_path, "w", encoding="utf-8") as f:
                 json.dump(self.file_index, f, indent=2)
-            logger.debug("Metadata cache saved with %d entries", len(self.file_index))
+            logger.debug(
+                "Metadata cache saved (%d files)",
+                len(self.file_index["files"]),
+            )
         except Exception:
             logger.exception("Failed to save metadata cache")
+
+    def get_last_synced_at(self) -> str | None:
+        """Return the ISO timestamp string of the last successful sync, or None."""
+        return self.file_index.get("last_synced_at")
 
     # Loading and chunking documents
     def _scan_local_files(self) -> dict[str, dict[str, float]]:
@@ -352,7 +376,7 @@ class DocumentManager:
         )
 
         local_files = self._scan_local_files()
-        indexed_files = self.file_index
+        indexed_files = self.file_index["files"]
 
         added = []
         updated = []
@@ -371,6 +395,11 @@ class DocumentManager:
         for path in indexed_files:
             if path not in local_files:
                 removed.append(path)
+
+        # Normalize all paths
+        added = [self._normalize_path(p) for p in added]
+        updated = [self._normalize_path(p) for p in updated]
+        removed = [self._normalize_path(p) for p in removed]
 
         changes = {
             "added": added,
@@ -460,7 +489,7 @@ class DocumentManager:
             logger.debug("Deleting file from DB: %s", path)
             file_id = self._file_id(path)
             self.vector_db.delete(where={"file_id": file_id})
-            self.file_index.pop(path, None)
+            self.file_index["files"].pop(path, None)
 
         # 2. Handle updates (delete first)
         for path in updated:
@@ -478,12 +507,16 @@ class DocumentManager:
             # 4. Update file_index ONLY after DB write success
             for path in added + updated:
                 stat = Path(path).stat()
-                self.file_index[path] = {
+                self.file_index["files"][path] = {
                     "file_id": self._file_id(path),
                     "mtime": stat.st_mtime,
                     "size": stat.st_size,
                 }
 
+        # 5. Update last_synced_at
+        self.file_index["last_synced_at"] = (
+            datetime.now(timezone.utc).isoformat(timespec="seconds")
+        )
         self._save_metadata_cache()
         logger.debug(".. Local sync changes applied successfully")
 

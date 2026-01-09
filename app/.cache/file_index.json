@@ -1,27 +1,30 @@
 {
-  "C:\\code\\ollama-rag\\app\\data\\AQA-7404-7405-GCSE-A-LEVEL-PROGRESSION-ANSWERS.PDF": {
-    "file_id": "04783d0151e970cf097b4c93977107b3bcf8ad47",
-    "mtime": 1762011031.2053263,
-    "size": 703883
-  },
-  "C:\\code\\ollama-rag\\app\\data\\Critical Listening - O Lord My Rock and My Redeemer.pdf": {
-    "file_id": "5f37e604ccb74049737b9c8678f04c7954485aa3",
-    "mtime": 1761044850.6243227,
-    "size": 152670
-  },
-  "C:\\code\\ollama-rag\\app\\data\\A Course in Machine Learning (ciml-v0_9-all).pdf": {
-    "file_id": "55db7af50018e74a058468d93a35c0d6817f482d",
-    "mtime": 1767818861.0918398,
-    "size": 2636899
-  },
-  "C:\\code\\ollama-rag\\app\\data\\A History of Modern 64-bit Computing - Feb 2007 (CSEP590A).pdf": {
-    "file_id": "ba0f2a864ff3392f30ac94ddc52a9a6e75589e6b",
-    "mtime": 1767738760.3831353,
-    "size": 568047
-  },
-  "C:\\code\\ollama-rag\\app\\data\\Attention Is All You Need - 2017 (1706.03762).pdf": {
-    "file_id": "afc9e8b20b7e428405637b6f8c7df9576b379463",
-    "mtime": 1767738837.3508966,
-    "size": 2215244
+  "last_synced_at": "2026-01-09T11:42:39+00:00",
+  "files": {
+    "C:\\code\\ollama-rag\\app\\data\\AQA-7404-7405-GCSE-A-LEVEL-PROGRESSION-ANSWERS.PDF": {
+      "file_id": "04783d0151e970cf097b4c93977107b3bcf8ad47",
+      "mtime": 1762011031.2053263,
+      "size": 703883
+    },
+    "C:\\code\\ollama-rag\\app\\data\\A Course in Machine Learning (ciml-v0_9-all).pdf": {
+      "file_id": "55db7af50018e74a058468d93a35c0d6817f482d",
+      "mtime": 1767818861.0918398,
+      "size": 2636899
+    },
+    "C:\\code\\ollama-rag\\app\\data\\A History of Modern 64-bit Computing - Feb 2007 (CSEP590A).pdf": {
+      "file_id": "ba0f2a864ff3392f30ac94ddc52a9a6e75589e6b",
+      "mtime": 1767738760.3831353,
+      "size": 568047
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Attention Is All You Need - 2017 (1706.03762).pdf": {
+      "file_id": "afc9e8b20b7e428405637b6f8c7df9576b379463",
+      "mtime": 1767738837.3508966,
+      "size": 2215244
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Critical Listening - O Lord My Rock and My Redeemer.pdf": {
+      "file_id": "5f37e604ccb74049737b9c8678f04c7954485aa3",
+      "mtime": 1761044850.6243227,
+      "size": 152670
+    }
   }
 }
