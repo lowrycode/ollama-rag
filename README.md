@@ -101,6 +101,8 @@ ollama-rag/
 ├── app/                          # Backend API
 │   ├── main.py                   # FastAPI application
 │   ├── config.py                 # Configuration
+│   ├── .cache/                   # Cache & metadata storage
+│   │   └── file_index.json       # Local metadata cache for syncing
 │   ├── data/                     # Document storage
 │   ├── db/                       # Vector database (Chroma)
 │   └── services/
@@ -108,7 +110,6 @@ ollama-rag/
 │       └── retrieval.py          # Query & response generation
 ├── frontend/                     # Web UI
 │   └── index.html                # Query interface
-├── dev/                          # Development utilities
 ├── requirements.txt
 └── README.md
 ```
@@ -130,13 +131,15 @@ ollama-rag/
 
 2. Place documents in `app/data/`
 
-3. Start the server:
+3. Ensure Ollama is running in the background
+
+4. Start the server from project root:
    ```bash
    uvicorn app.main:app --reload
    ```
 
-4. Access the UI at `http://localhost:8000`
+5. Access the UI at `http://localhost:8000`
 
 ## Development Status
 
-This project is in active development. Early testing phase with core RAG functionality implemented.
+This project is in active development.
