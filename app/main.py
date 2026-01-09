@@ -10,7 +10,7 @@ from langchain_ollama import ChatOllama
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,  # change to INFO in deployment
-    format="%(levelname)-9s %(message)s"
+    format="%(levelname)-9s %(message)s",
 )
 THIRD_PARTY = [
     "httpx",
@@ -78,6 +78,7 @@ class QueryResponse(BaseModel):
 
 class SyncCheckResponse(BaseModel):
     is_in_sync: bool
+    last_synced_at: str | None = None  # ISO timestamp or None
 
 
 # Endpoint functions
@@ -115,13 +116,19 @@ async def query_with_context(req: QueryRequest):
 
 @app.get("/sync", response_model=SyncCheckResponse)
 async def get_sync_status():
-    return {"is_in_sync": dm.is_in_sync(show_summary=False)}
+    return {
+        "is_in_sync": dm.is_in_sync(show_summary=False),
+        "last_synced_at": dm.get_last_synced_at(),
+    }
 
 
 @app.post("/sync", status_code=201, response_model=SyncCheckResponse)
 async def trigger_sync():
     dm.sync(show_summary=False)
-    return {"is_in_sync": dm.is_in_sync(show_summary=False)}
+    return {
+        "is_in_sync": dm.is_in_sync(show_summary=False),
+        "last_synced_at": dm.get_last_synced_at(),
+    }
 
 
 @app.get("/health")

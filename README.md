@@ -31,7 +31,7 @@ Request body:
 ```json
 {
   "question": "Your question here",
-  "top_k": 4  # How many document chunks to use as context
+  "top_k": 4
 }
 ```
 ***NOTE:*** *`top_k` controls how many document chunks are used as context and retrieved as sources in response.*
@@ -59,7 +59,8 @@ Check whether the vector database is currently in sync with local documents.
 Response:
 ```json
 {
-  "is_in_sync": true
+  "is_in_sync": true,
+  "last_synced_at": "string"
 }
 ```
 
@@ -74,7 +75,8 @@ Trigger a synchronization between local documents and the vector database.
 Response:
 ```json
 {
-  "is_in_sync": true
+  "is_in_sync": true,
+  "last_synced_at": "string"
 }
 ```
 
