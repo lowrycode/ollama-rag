@@ -410,8 +410,8 @@
             padding: 6px 8px;
             font-size: 14px;
             border-radius: 8px;
-            background: transparent;
-            border: 1px solid rgba(15, 23, 42, 0.06);
+            background: rgba(102, 126, 234, 0.08);
+            border: 1px solid rgba(15, 23, 42, 0.08);
             color: #374151;
             cursor: pointer;
             line-height: 1;
@@ -487,7 +487,7 @@
                 <div class="sync-status-container">
                     <span class="sync-status-label">Sync Status:</span>
                     <div id="syncStatus" aria-live="polite" class="status-pill" title="Sync status: checking..."></div>
-                    <button type="button" id="syncNowBtn" class="sync-btn--subtle" title="Sync documents now" style="display: none;">↻ Sync</button>
+                    <button type="button" id="syncNowBtn" class="sync-btn--subtle" title="Sync documents now" style="display: none;">↻</button>
                 </div>
             </div>
         </div>
@@ -518,7 +518,7 @@
 <script>
     const END_POINT = "http://127.0.0.1:8000/query";
     const SYNC_ENDPOINT = "http://127.0.0.1:8000/sync";
-    const DEFAULT_QUESTION = "What is a dative covalent bond";
+    const DEFAULT_QUESTION = "What is a dative covalent bond?";
     
     // Set default value
     document.getElementById("question").value = DEFAULT_QUESTION;
