@@ -113,13 +113,13 @@ async def query_with_context(req: QueryRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.post("/sync/check", response_model=SyncCheckResponse)
-async def check_sync_status():
+@app.get("/sync", response_model=SyncCheckResponse)
+async def get_sync_status():
     return {"is_in_sync": dm.is_in_sync(show_summary=False)}
 
 
-@app.post("/sync/update", status_code=201, response_model=SyncCheckResponse)
-async def sync_documents():
+@app.post("/sync", status_code=201, response_model=SyncCheckResponse)
+async def trigger_sync():
     dm.sync(show_summary=False)
     return {"is_in_sync": dm.is_in_sync(show_summary=False)}
 

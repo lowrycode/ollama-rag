@@ -21,18 +21,76 @@ This project implements a complete RAG pipeline with:
 - ✅ Provide expandable source content snippets
 - ✅ Web-based query interface with modern UI
 
-### API Endpoint
-**POST** `/query`
+### API Endpoints
+
+**POST `/query`**
+
+Retrieve an answer using the indexed documents as context.
+
+Request body:
 ```json
 {
   "question": "Your question here",
-  "top_k": 4
+  "top_k": 4  # How many document chunks to use as context
+}
+```
+***NOTE:*** *`top_k` controls how many document chunks are used as context and retrieved as sources in response.*
+
+Response:
+```json
+{
+  "answer": "Generated answer text",
+  "sources": [
+    {
+      "file": "/abs/path/document.pdf",
+      "content": "Relevant excerpt from document",
+      "relevance": 0.82
+    }
+  ]
 }
 ```
 
-Response includes:
-- Generated answer
-- List of source documents with content and relevance scores
+---
+
+**GET `/sync`**
+
+Check whether the vector database is currently in sync with local documents.
+
+Response:
+```json
+{
+  "is_in_sync": true
+}
+```
+
+---
+
+**POST `/sync`**
+
+Trigger a synchronization between local documents and the vector database.
+- Detects added, updated, and removed files
+- Updates the vector database accordingly
+
+Response:
+```json
+{
+  "is_in_sync": true
+}
+```
+
+---
+
+**GET `/health`**
+
+Simple health check endpoint.
+
+Response:
+```json
+{
+  "status": "ok"
+}
+```
+
 
 ## Project Structure
 
