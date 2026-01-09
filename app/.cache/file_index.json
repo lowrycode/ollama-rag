@@ -1,5 +1,5 @@
 {
-  "last_synced_at": "2026-01-09T14:42:48+00:00",
+  "last_synced_at": "2026-01-09T16:50:57+00:00",
   "files": {
     "C:\\code\\ollama-rag\\app\\data\\AQA-7404-7405-GCSE-A-LEVEL-PROGRESSION-ANSWERS.PDF": {
       "file_id": "04783d0151e970cf097b4c93977107b3bcf8ad47",
@@ -23,8 +23,8 @@
     },
     "C:\\code\\ollama-rag\\app\\data\\Biography.txt": {
       "file_id": "1e66c2d04b6f5ffc2204d6053fe1b71bde22d8b1",
-      "mtime": 1767965005.2601068,
-      "size": 439127
+      "mtime": 1767974934.4163783,
+      "size": 419095
     },
     "C:\\code\\ollama-rag\\app\\data\\Instrumental_Analysis_Topic_Guide.docx": {
       "file_id": "9fb3b6d01f758660ea14f8b94adb8b43b7c23f64",

@@ -425,24 +425,58 @@
             border-color: rgba(102, 126, 234, 0.12);
         }
 
+        .sync-status-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.02);
+            border-radius: 8px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            font-size: 13px;
+            color: #666;
+        }
+
+        .sync-status-label {
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+
         .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: help;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .status-indicator {
             display: inline-block;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: #9ca3af;
-            cursor: help;
             transition: all 0.2s ease;
         }
 
-        .status-pill:hover {
-            transform: scale(1.2);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        .status-pill:hover .status-indicator {
+            transform: scale(1.25);
         }
 
-        .status-pill.in { background: #059669; }
-        .status-pill.out { background: #d97706; }
-        .status-pill.err { background: #dc2626; }
+        .status-pill:hover {
+            opacity: 0.8;
+        }
+
+        .status-pill.in .status-indicator { background: #10b981; }
+        .status-pill.in { color: #059669; }
+        
+        .status-pill.out .status-indicator { background: #f97316; }
+        .status-pill.out { color: #d97706; }
+        
+        .status-pill.err .status-indicator { background: #ef4444; }
+        .status-pill.err { color: #dc2626; }
     </style>
 </head>
 <body>
@@ -450,8 +484,11 @@
         <div class="header">
             <h1>🔍 RAG Query Assistant</h1>
             <div class="header-controls">
-                <button type="button" id="checkSyncBtn" class="sync-btn--subtle" title="Check sync status">🔄</button>
-                <div id="syncStatus" aria-live="polite" class="status-pill" title="Sync status: unknown"></div>
+                <div class="sync-status-container">
+                    <span class="sync-status-label">Sync Status:</span>
+                    <div id="syncStatus" aria-live="polite" class="status-pill" title="Sync status: checking..."></div>
+                    <button type="button" id="syncNowBtn" class="sync-btn--subtle" title="Sync documents now" style="display: none;">↻ Sync</button>
+                </div>
             </div>
         </div>
         <form id="queryForm">
@@ -531,43 +568,88 @@
         sendQuery(question);
     });
 
-    // Wire check sync button
-    document.getElementById("checkSyncBtn").addEventListener("click", function() {
-        checkSync();
-    });
-
     async function checkSync() {
         const statusEl = document.getElementById("syncStatus");
-        const btn = document.getElementById("checkSyncBtn");
-        const origBtn = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '⏳';
+        const syncBtn = document.getElementById("syncNowBtn");
         statusEl.className = 'status-pill';
+        statusEl.innerHTML = '<span class="status-indicator"></span><span>Checking...</span>';
         statusEl.title = 'Sync status: checking...';
 
         try {
             const res = await fetch(SYNC_ENDPOINT, { method: "GET" });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            if (data && data.is_in_sync === true) {
-                statusEl.className = 'status-pill in';
-                statusEl.title = 'Sync status: in sync ✓';
-            } else if (data && data.is_in_sync === false) {
-                statusEl.className = 'status-pill out';
-                statusEl.title = 'Sync status: out of sync';
-            } else {
-                statusEl.className = 'status-pill err';
-                statusEl.title = 'Sync status: unknown';
-            }
+            updateSyncStatus(data, statusEl, syncBtn);
         } catch (err) {
             console.error(err);
             statusEl.className = 'status-pill err';
-            statusEl.title = 'Sync status: error';
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = origBtn;
+            statusEl.innerHTML = '<span class="status-indicator"></span><span>Error</span>';
+            statusEl.title = 'Sync status: error checking status';
+            syncBtn.style.display = 'none';
         }
     }
+
+    async function performSync() {
+        const statusEl = document.getElementById("syncStatus");
+        const syncBtn = document.getElementById("syncNowBtn");
+        const origSyncBtn = syncBtn.innerHTML;
+        syncBtn.disabled = true;
+        syncBtn.innerHTML = '⏳';
+        statusEl.className = 'status-pill';
+        statusEl.innerHTML = '<span class="status-indicator"></span><span>Syncing...</span>';
+        statusEl.title = 'Syncing documents...';
+
+        try {
+            const res = await fetch(SYNC_ENDPOINT, { method: "POST" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            updateSyncStatus(data, statusEl, syncBtn);
+            // Show success feedback
+            statusEl.innerHTML += ' ✓';
+            setTimeout(() => {
+                statusEl.innerHTML = '<span class="status-indicator"></span><span>In Sync</span> ✓';
+            }, 200);
+        } catch (err) {
+            console.error(err);
+            statusEl.className = 'status-pill err';
+            statusEl.innerHTML = '<span class="status-indicator"></span><span>Sync Failed</span>';
+            statusEl.title = 'Error syncing documents';
+        } finally {
+            syncBtn.disabled = false;
+            syncBtn.innerHTML = origSyncBtn;
+        }
+    }
+
+    function updateSyncStatus(data, statusEl, syncBtn) {
+        const lastSynced = data.last_synced_at ? new Date(data.last_synced_at).toLocaleString() : 'Never';
+        
+        if (data && data.is_in_sync === true) {
+            statusEl.className = 'status-pill in';
+            statusEl.innerHTML = '<span class="status-indicator"></span><span>In Sync</span>';
+            statusEl.title = `Sync status: in sync ✓\nLast synced: ${lastSynced}`;
+            syncBtn.style.display = 'none';
+        } else if (data && data.is_in_sync === false) {
+            statusEl.className = 'status-pill out';
+            statusEl.innerHTML = '<span class="status-indicator"></span><span>Out of Sync</span>';
+            statusEl.title = `Sync status: out of sync\nLast synced: ${lastSynced}`;
+            syncBtn.style.display = 'inline-block';
+        } else {
+            statusEl.className = 'status-pill err';
+            statusEl.innerHTML = '<span class="status-indicator"></span><span>Unknown</span>';
+            statusEl.title = 'Sync status: unknown';
+            syncBtn.style.display = 'none';
+        }
+    }
+
+    // Auto-check sync status on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        checkSync();
+    });
+
+    // Wire sync button
+    document.getElementById("syncNowBtn").addEventListener("click", function() {
+        performSync();
+    });
 
     // Format and display API response
     function displayResponse(data) {
