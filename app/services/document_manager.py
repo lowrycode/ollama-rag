@@ -139,6 +139,11 @@ class DocumentManager:
         """
         logger.debug("Scanning local files for metadata..")
 
+        if not self.data_dir.exists():
+            msg = f"Data directory {self.data_dir} does not exist. Cannot scan files."
+            logger.error(msg)
+            raise FileNotFoundError(msg)
+
         files = {}
         for path in self.data_dir.rglob("*"):
             if path.suffix.lower() not in {".pdf", ".txt", ".docx"}:
@@ -514,8 +519,8 @@ class DocumentManager:
                 }
 
         # 5. Update last_synced_at
-        self.file_index["last_synced_at"] = (
-            datetime.now(timezone.utc).isoformat(timespec="seconds")
+        self.file_index["last_synced_at"] = datetime.now(timezone.utc).isoformat(
+            timespec="seconds"
         )
         self._save_metadata_cache()
         logger.debug(".. Local sync changes applied successfully")
