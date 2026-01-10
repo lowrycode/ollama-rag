@@ -86,7 +86,7 @@ class SyncCheckResponse(BaseModel):
 
 # Endpoint functions
 @app.post("/query", response_model=QueryResponse)
-async def query_with_context(req: QueryRequest):
+def query_with_context(req: QueryRequest):
     try:
         results = retrieve_context(
             vector_db=vector_db, query=req.question, top_k=req.top_k
@@ -118,7 +118,7 @@ async def query_with_context(req: QueryRequest):
 
 
 @app.get("/sync", response_model=SyncCheckResponse)
-async def get_sync_status():
+def get_sync_status():
     return {
         "is_in_sync": dm.is_in_sync(show_summary=False),
         "last_synced_at": dm.get_last_synced_at(),
@@ -148,5 +148,5 @@ async def trigger_sync():
 
 
 @app.get("/health")
-async def health_check():
+def health_check():
     return {"status": "ok"}
