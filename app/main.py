@@ -1,7 +1,9 @@
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from app.services.document_manager import DocumentManager
 from app.services.retrieval import retrieve_context, generate_prompt_string
@@ -9,7 +11,7 @@ from langchain_ollama import ChatOllama
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,  # change to INFO in deployment
+    level=logging.INFO,  # change to INFO in deployment
     format="%(levelname)-9s %(message)s",
 )
 THIRD_PARTY = [
@@ -31,6 +33,7 @@ logger = logging.getLogger(__name__)
 dm: DocumentManager | None = None
 vector_db = None
 llm = None
+sync_lock = asyncio.Lock()
 
 
 @asynccontextmanager
@@ -124,7 +127,20 @@ async def get_sync_status():
 
 @app.post("/sync", status_code=201, response_model=SyncCheckResponse)
 async def trigger_sync():
-    dm.sync(show_summary=False)
+    # Fail fast if a sync is already running
+    if sync_lock.locked():
+        raise HTTPException(
+            status_code=409,
+            detail="Sync already in progress"
+        )
+
+    # Serialize sync operations to prevent concurrent mutation of
+    # the vector database and on-disk metadata cache
+    async with sync_lock:
+        # Run blocking sync logic in a worker thread
+        # so the event loop remains responsive
+        await run_in_threadpool(dm.sync)
+
     return {
         "is_in_sync": dm.is_in_sync(show_summary=False),
         "last_synced_at": dm.get_last_synced_at(),
