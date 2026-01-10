@@ -60,7 +60,7 @@ Response:
 ```json
 {
   "is_in_sync": true,
-  "last_synced_at": "string"
+  "last_synced_at": "2026-01-10T15:48:37+00:00"
 }
 ```
 
@@ -76,7 +76,7 @@ Response:
 ```json
 {
   "is_in_sync": true,
-  "last_synced_at": "string"
+  "last_synced_at": "2026-01-10T15:48:37+00:00"
 }
 ```
 
@@ -140,6 +140,45 @@ ollama-rag/
 
 5. Access the UI at `http://localhost:8000`
 
-## Development Status
+## How to Reset and Load Your Own Documents
 
-This project is in active development.
+The project includes sample documents in the `app/data/` folder (statutory guidance for schools in England, taken from www.gov.uk). The documents have been pre-loaded into the vector database so you can start querying immediately.
+
+To start fresh with your own documents:
+1. **Delete the `app/.cache/` and `app/db/` directories:**  
+    *These will be re-created automatically by the app when needed.*
+2. **Replace the documents in the `app/data/` directory:**  
+    *These will be added to the vector database when you run the sync procedure via the UI.*
+
+***NOTE:*** *Depending on the size and number of documents, the sync procedure may take a while! It took around 25 mins to add these documents to the vector database.*
+
+## Deployment
+
+### Local vs Production LLMs
+
+This project uses **Ollama** and is well suited for **local development and private use**.
+
+**Benefits of Ollama (Local Development)**
+- Runs entirely on your machine (no external API calls)
+- Ideal for working with sensitive or private documents
+- No usage costs or rate limits imposed by external providers
+
+**For production deployments**, running a local LLM is not recommended due to:
+- High CPU/GPU and memory requirements
+- Limited scalability under concurrent user load
+- Increased operational complexity (model management, resource limits)
+
+In production, it is preferable to **use a hosted LLM provider** (e.g. OpenAI, Google, Anthropic) for model inference. This requires only swapping one line of code in `app/main.py` inside the lifespan function:
+
+``` python
+# Change this:
+llm = ChatOllama(model="llama3.2")
+
+# to a different model, e.g. OpenAI GPT-4:
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+```
+
+The rest of the codebase remains unchanged.
+
+For a complete list of models supported by LangChain, see the [LangChain Providers & Integrations Overview](https://docs.langchain.com/oss/python/integrations/providers/overview).
