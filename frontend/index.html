@@ -1,679 +1,796 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RAG Query Assistant</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 40px;
-            max-width: 800px;
-            width: 100%;
-        }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 0px;
-            font-size: 28px;
-            text-align: center;
-        }
-        
-        #queryForm {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        
-        textarea {
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 120px;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-        
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        textarea::placeholder {
-            color: #999;
-        }
-        
-        button {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-        
-        #loadingPlaceholder {
-            display: none;
-            text-align: center;
-            color: #667eea;
-            font-weight: 600;
-            padding: 20px;
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 8px;
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
-        }
-        
-        #response {
-            display: none;
-        }
-        
-        #response.visible {
-            display: block;
-        }
-        
-        .answer-section {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .answer-section h3 {
-            color: #667eea;
-            margin-bottom: 12px;
-            font-size: 18px;
-        }
-        
-        .answer-section p {
-            color: #333;
-            line-height: 1.6;
-            font-size: 16px;
-        }
-        
-        details {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-        }
-        
-        summary {
-            cursor: pointer;
-            font-weight: 600;
-            color: #667eea;
-            font-size: 16px;
-            user-select: none;
-            padding: 10px 0;
-        }
-        
-        summary:hover {
-            color: #764ba2;
-        }
-        
-        .source-item {
-            margin-bottom: 15px;
-            padding: 15px;
-            background: white;
-            border-left: 4px solid #667eea;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-        
-        .source-file {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 6px;
-            font-size: 15px;
-        }
-        
-        .source-relevance {
-            font-size: 13px;
-            color: #999;
-            margin-bottom: 10px;
-        }
-        
-        .source-item details {
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            border: none;
-        }
-        
-        .source-item summary {
-            color: #667eea;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 5px 0;
-        }
-        
-        .source-content {
-            margin-top: 10px;
-            padding: 12px;
-            background: #fafafa;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #555;
-            white-space: pre-wrap;
-            line-height: 1.5;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .confidence-meter {
-            margin-top: 15px;
-            padding: 12px;
-            background: #f5f5f5;
-            border-radius: 6px;
-        }
-        
-        .confidence-label {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-        
-        .confidence-bar {
-            width: 100%;
-            height: 8px;
-            background: #e0e0e0;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        
-        .confidence-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.4s ease;
-        }
-        
-        .confidence-fill.high {
-            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-        }
-        
-        .confidence-fill.medium {
-            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
-        }
-        
-        .confidence-fill.low {
-            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
-        }
-        
-        .confidence-text {
-            font-size: 12px;
-            color: #666;
-            margin-top: 6px;
-            text-align: right;
-        }
-        
-        .advanced-options {
-            padding: 5px 15px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.04) 100%);
-            border-radius: 10px;
-            border: 1.5px solid rgba(102, 126, 234, 0.3);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08);
-            transition: all 0.3s ease;
-        }
-        
-        .advanced-options:hover {
-            border-color: rgba(102, 126, 234, 0.5);
-            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.12);
-        }
-        
-        .advanced-toggle {
-            cursor: pointer;
-            font-weight: 600;
-            color: #667eea;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            user-select: none;
-            padding: 6px 0;
-            transition: all 0.2s ease;
-        }
-        
-        .advanced-toggle:hover {
-            color: #764ba2;
-            transform: translateX(2px);
-        }
-        
-        #toggleArrow {
-            display: inline-block;
-            transition: transform 0.3s ease;
-            font-size: 12px;
-            font-weight: 700;
-        }
-        
-        .advanced-content {
-            display: none;
-            margin-top: 14px;
-            padding-top: 14px;
-            border-top: 1px solid rgba(102, 126, 234, 0.15);
-            animation: slideDown 0.3s ease;
-        }
-        
-        .advanced-content.visible {
-            display: block;
-        }
-        
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-8px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .option-group {
-            margin-bottom: 14px;
-        }
-        
-        .option-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: #444;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            letter-spacing: 0.3px;
-        }
-        
-        .option-value {
-            font-size: 12px;
-            color: #667eea;
-            font-weight: 700;
-            background: rgba(102, 126, 234, 0.1);
-            padding: 2px 8px;
-            border-radius: 4px;
-            min-width: 30px;
-            text-align: center;
-        }
-        
-        input[type="range"] {
-            width: 100%;
-            height: 5px;
-            border-radius: 3px;
-            background: linear-gradient(to right, #e8eaf6 0%, #e0e0e0 100%);
-            outline: none;
-            -webkit-appearance: none;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        
-        input[type="range"]:hover {
-            background: linear-gradient(to right, #e0dcf7 0%, #d8d8d8 100%);
-        }
-        
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-            transition: all 0.2s ease;
-        }
-        
-        input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.15);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
-        }
-        
-        input[type="range"]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-            transition: all 0.2s ease;
-        }
-        
-        input[type="range"]::-moz-range-thumb:hover {
-            transform: scale(1.15);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
-        }
-        
-        .option-help {
-            font-size: 11px;
-            color: #999;
-            margin-top: 6px;
-            font-style: italic;
-            line-height: 1.4;
-        }
-        /* Sync button + status pill styles */
-        .header {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        .header-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
 
-        .sync-btn--subtle {
-            padding: 6px 8px;
-            font-size: 14px;
-            border-radius: 8px;
-            background: rgba(102, 126, 234, 0.08);
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            color: #374151;
-            cursor: pointer;
-            line-height: 1;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
+      .container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        max-width: 800px;
+        width: 100%;
+      }
 
-        .sync-btn--subtle:hover {
-            background: rgba(102, 126, 234, 0.03);
-            border-color: rgba(102, 126, 234, 0.12);
-        }
+      h1 {
+        color: #333;
+        margin-bottom: 0px;
+        font-size: 28px;
+        text-align: center;
+      }
 
-        .sync-status-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            background: rgba(15, 23, 42, 0.02);
-            border-radius: 8px;
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            font-size: 13px;
-            color: #666;
-        }
+      #queryForm {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 30px;
+      }
 
-        .sync-status-label {
-            font-weight: 500;
-            letter-spacing: 0.2px;
-        }
+      textarea {
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 120px;
+        transition: border-color 0.3s, box-shadow 0.3s;
+      }
 
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            cursor: help;
-            transition: all 0.2s ease;
-            font-weight: 600;
-            font-size: 12px;
-        }
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
 
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #9ca3af;
-            transition: all 0.2s ease;
-        }
+      textarea::placeholder {
+        color: #999;
+      }
 
-        .status-pill:hover .status-indicator {
-            transform: scale(1.25);
-        }
+      button {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
 
-        .status-pill:hover {
-            opacity: 0.8;
-        }
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+      }
 
-        .status-pill.in .status-indicator { background: #10b981; }
-        .status-pill.in { color: #059669; }
-        
-        .status-pill.out .status-indicator { background: #f97316; }
-        .status-pill.out { color: #d97706; }
-        
-        .status-pill.err .status-indicator { background: #ef4444; }
-        .status-pill.err { color: #dc2626; }
+      button:active {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        background: linear-gradient(135deg, #a0a0a0 0%, #808080 100%);
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+        opacity: 0.7;
+      }
+
+      #loadingPlaceholder {
+        display: none;
+        text-align: center;
+        color: #667eea;
+        font-weight: 600;
+        padding: 20px;
+        background: rgba(102, 126, 234, 0.05);
+        border-radius: 8px;
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      #response {
+        display: none;
+      }
+
+      #response.visible {
+        display: block;
+      }
+
+      .answer-section {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+        padding: 25px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border-left: 4px solid #667eea;
+      }
+
+      .answer-section h3 {
+        color: #667eea;
+        margin-bottom: 12px;
+        font-size: 18px;
+      }
+
+      .answer-section p {
+        color: #333;
+        line-height: 1.6;
+        font-size: 16px;
+      }
+
+      details {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+      }
+
+      summary {
+        cursor: pointer;
+        font-weight: 600;
+        color: #667eea;
+        font-size: 16px;
+        user-select: none;
+        padding: 10px 0;
+      }
+
+      summary:hover {
+        color: #764ba2;
+      }
+
+      .source-item {
+        margin-bottom: 15px;
+        padding: 15px;
+        background: white;
+        border-left: 4px solid #667eea;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      .source-file {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 6px;
+        font-size: 15px;
+      }
+
+      .source-relevance {
+        font-size: 13px;
+        color: #999;
+        margin-bottom: 10px;
+      }
+
+      .source-item details {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        border: none;
+      }
+
+      .source-item summary {
+        color: #667eea;
+        font-size: 14px;
+        font-weight: 500;
+        padding: 5px 0;
+      }
+
+      .source-content {
+        margin-top: 10px;
+        padding: 12px;
+        background: #fafafa;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #555;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .confidence-meter {
+        margin-top: 15px;
+        padding: 12px;
+        background: #f5f5f5;
+        border-radius: 6px;
+      }
+
+      .confidence-label {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+
+      .confidence-bar {
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .confidence-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.4s ease;
+      }
+
+      .confidence-fill.high {
+        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+      }
+
+      .confidence-fill.medium {
+        background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+      }
+
+      .confidence-fill.low {
+        background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+      }
+
+      .confidence-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+        text-align: right;
+      }
+
+      .advanced-options {
+        padding: 5px 15px;
+        background: linear-gradient(
+          135deg,
+          rgba(102, 126, 234, 0.06) 0%,
+          rgba(118, 75, 162, 0.04) 100%
+        );
+        border-radius: 10px;
+        border: 1.5px solid rgba(102, 126, 234, 0.3);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08);
+        transition: all 0.3s ease;
+      }
+
+      .advanced-options:hover {
+        border-color: rgba(102, 126, 234, 0.5);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.12);
+      }
+
+      .advanced-toggle {
+        cursor: pointer;
+        font-weight: 600;
+        color: #667eea;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        user-select: none;
+        padding: 6px 0;
+        transition: all 0.2s ease;
+      }
+
+      .advanced-toggle:hover {
+        color: #764ba2;
+        transform: translateX(2px);
+      }
+
+      #toggleArrow {
+        display: inline-block;
+        transition: transform 0.3s ease;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .advanced-content {
+        display: none;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(102, 126, 234, 0.15);
+        animation: slideDown 0.3s ease;
+      }
+
+      .advanced-content.visible {
+        display: block;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .option-group {
+        margin-bottom: 14px;
+      }
+
+      .option-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #444;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        letter-spacing: 0.3px;
+      }
+
+      .option-value {
+        font-size: 12px;
+        color: #667eea;
+        font-weight: 700;
+        background: rgba(102, 126, 234, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+        min-width: 30px;
+        text-align: center;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        height: 5px;
+        border-radius: 3px;
+        background: linear-gradient(to right, #e8eaf6 0%, #e0e0e0 100%);
+        outline: none;
+        -webkit-appearance: none;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      input[type="range"]:hover {
+        background: linear-gradient(to right, #e0dcf7 0%, #d8d8d8 100%);
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        transition: all 0.2s ease;
+      }
+
+      input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.15);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        transition: all 0.2s ease;
+      }
+
+      input[type="range"]::-moz-range-thumb:hover {
+        transform: scale(1.15);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+      }
+
+      .option-help {
+        font-size: 11px;
+        color: #999;
+        margin-top: 6px;
+        font-style: italic;
+        line-height: 1.4;
+      }
+      /* Sync button + status pill styles */
+      .header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .header-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .sync-btn--subtle {
+        padding: 6px 8px;
+        font-size: 14px;
+        border-radius: 8px;
+        background: rgba(102, 126, 234, 0.08);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        color: #374151;
+        cursor: pointer;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .sync-btn--subtle:hover {
+        background: rgba(102, 126, 234, 0.03);
+        border-color: rgba(102, 126, 234, 0.12);
+      }
+
+      .sync-status-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: rgba(15, 23, 42, 0.02);
+        border-radius: 8px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        font-size: 13px;
+        color: #666;
+      }
+
+      .sync-status-label {
+        font-weight: 500;
+        letter-spacing: 0.2px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: help;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        font-size: 12px;
+      }
+
+      .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #9ca3af;
+        transition: all 0.2s ease;
+      }
+
+      .status-pill:hover .status-indicator {
+        transform: scale(1.25);
+      }
+
+      .status-pill:hover {
+        opacity: 0.8;
+      }
+
+      .status-pill.in .status-indicator {
+        background: #10b981;
+      }
+      .status-pill.in {
+        color: #059669;
+      }
+
+      .status-pill.out .status-indicator {
+        background: #f97316;
+      }
+      .status-pill.out {
+        color: #d97706;
+      }
+
+      .status-pill.err .status-indicator {
+        background: #ef4444;
+      }
+      .status-pill.err {
+        color: #dc2626;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>🔍 RAG Query Assistant</h1>
-            <div class="header-controls">
-                <div class="sync-status-container">
-                    <span class="sync-status-label">Sync Status:</span>
-                    <div id="syncStatus" aria-live="polite" class="status-pill" title="Sync status: checking..."></div>
-                    <button type="button" id="syncNowBtn" class="sync-btn--subtle" title="Sync documents now" style="display: none;">↻</button>
-                </div>
-            </div>
+      <div class="header">
+        <h1>🔍 RAG Query Assistant</h1>
+        <div class="header-controls">
+          <div class="sync-status-container">
+            <span class="sync-status-label">Sync Status:</span>
+            <div
+              id="syncStatus"
+              aria-live="polite"
+              class="status-pill"
+              title="Sync status: checking..."
+            ></div>
+            <button
+              type="button"
+              id="syncNowBtn"
+              class="sync-btn--subtle"
+              title="Sync documents now"
+              style="display: none"
+            >
+              ↻
+            </button>
+          </div>
         </div>
-        <form id="queryForm">
-            <textarea name="question" id="question" placeholder="Ask a question about your documents..."></textarea>
-            <div class="advanced-options">
-                <div class="advanced-toggle" onclick="toggleAdvanced()">
-                    <span id="toggleArrow">▶</span>
-                    <span>Advanced Options</span>
-                </div>
-                <div class="advanced-content" id="advancedContent">
-                    <div class="option-group">
-                        <div class="option-label">
-                            <span>Document Fragments to Retrieve</span>
-                            <span class="option-value" id="topKValue">4</span>
-                        </div>
-                        <input type="range" id="topK" min="1" max="10" value="4" oninput="updateTopKDisplay()" title="Higher values retrieve more document fragments for better context but slower response">
-                        <div class="option-help">More fragments = better context but slower responses. Fewer fragments = faster but may miss information.</div>
-                    </div>
-                </div>
+      </div>
+      <form id="queryForm">
+        <textarea
+          name="question"
+          id="question"
+          placeholder="Ask a question about your documents..."
+        ></textarea>
+        <div class="advanced-options">
+          <div class="advanced-toggle" onclick="toggleAdvanced()">
+            <span id="toggleArrow">▶</span>
+            <span>Advanced Options</span>
+          </div>
+          <div class="advanced-content" id="advancedContent">
+            <div class="option-group">
+              <div class="option-label">
+                <span>Document Fragments to Retrieve</span>
+                <span class="option-value" id="topKValue">4</span>
+              </div>
+              <input
+                type="range"
+                id="topK"
+                min="1"
+                max="10"
+                value="4"
+                oninput="updateTopKDisplay()"
+                title="Higher values retrieve more document fragments for better context but slower response"
+              />
+              <div class="option-help">
+                More fragments = better context but slower responses. Fewer
+                fragments = faster but may miss information.
+              </div>
             </div>
-            <button type="submit">Search Documents</button>
-            <div id="loadingPlaceholder">⏳ Searching documents and generating response...</div>
-        </form>
-        <div id="response"></div>
+          </div>
+        </div>
+        <button type="submit">Search Documents</button>
+        <div id="loadingPlaceholder">
+          ⏳ Searching documents and generating response...
+        </div>
+      </form>
+      <div id="response"></div>
     </div>
-</body>
-<script>
+  </body>
+  <script>
     const END_POINT = "http://127.0.0.1:8000/query";
     const SYNC_ENDPOINT = "http://127.0.0.1:8000/sync";
     const DEFAULT_QUESTION = "What is a dative covalent bond?";
-    
+
     // Set default value
     document.getElementById("question").value = DEFAULT_QUESTION;
-    
-    function toggleAdvanced() {
-        const content = document.getElementById("advancedContent");
-        const arrow = document.getElementById("toggleArrow");
-        content.classList.toggle("visible");
-        arrow.textContent = content.classList.contains("visible") ? "▼" : "▶";
-    }
-    
-    function updateTopKDisplay() {
-        const topK = document.getElementById("topK").value;
-        document.getElementById("topKValue").textContent = topK;
-    }
-    
-    async function sendQuery(question, top_k=3) {
-        // Get top_k from the slider
-        const topK = parseInt(document.getElementById("topK").value) || 4;
-        // Show loading placeholder
-        document.getElementById("loadingPlaceholder").style.display = "block";
-        document.getElementById("response").innerHTML = "";
-        document.getElementById("response").classList.remove("visible");
-        
-        try {
-            const res = await fetch(END_POINT, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ question: question, top_k: topK })
-            });
 
-            const data = await res.json();
-            console.log(data);
-            displayResponse(data);
-        } finally {
-            // Hide loading placeholder
-            document.getElementById("loadingPlaceholder").style.display = "none";
+    function toggleAdvanced() {
+      const content = document.getElementById("advancedContent");
+      const arrow = document.getElementById("toggleArrow");
+      content.classList.toggle("visible");
+      arrow.textContent = content.classList.contains("visible") ? "▼" : "▶";
+    }
+
+    function updateTopKDisplay() {
+      const topK = document.getElementById("topK").value;
+      document.getElementById("topKValue").textContent = topK;
+    }
+
+    async function sendQuery(question, top_k = 4) {
+      // Get top_k from the slider
+      const topK = parseInt(document.getElementById("topK").value) || 4;
+      // Show loading placeholder
+      document.getElementById("loadingPlaceholder").style.display = "block";
+      document.getElementById("response").innerHTML = "";
+      document.getElementById("response").classList.remove("visible");
+      // Disable Search Documents button during query
+      const submitBtn = document.querySelector(
+        '#queryForm button[type="submit"]'
+      );
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch(END_POINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ question: question, top_k: topK }),
+        });
+        if (!res.ok) {
+          throw new Error(`Query failed: HTTP ${res.status}`);
         }
+        const data = await res.json();
+        displayResponse(data);
+      } finally {
+        // Hide loading placeholder
+        document.getElementById("loadingPlaceholder").style.display = "none";
+        // Enable Search Documents button again
+        submitBtn.disabled = false;
+      }
     }
 
     // Handle form submission
-    document.getElementById("queryForm").addEventListener("submit", function(e) {
+    document
+      .getElementById("queryForm")
+      .addEventListener("submit", function (e) {
         e.preventDefault();
         const question = document.getElementById("question").value;
         sendQuery(question);
-    });
+      });
 
     async function checkSync() {
-        const statusEl = document.getElementById("syncStatus");
-        const syncBtn = document.getElementById("syncNowBtn");
-        statusEl.className = 'status-pill';
-        statusEl.innerHTML = '<span class="status-indicator"></span><span>Checking...</span>';
-        statusEl.title = 'Sync status: checking...';
+      const statusEl = document.getElementById("syncStatus");
+      const syncBtn = document.getElementById("syncNowBtn");
 
-        try {
-            const res = await fetch(SYNC_ENDPOINT, { method: "GET" });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            updateSyncStatus(data, statusEl, syncBtn);
-        } catch (err) {
-            console.error(err);
-            statusEl.className = 'status-pill err';
-            statusEl.innerHTML = '<span class="status-indicator"></span><span>Error</span>';
-            statusEl.title = 'Sync status: error checking status';
-            syncBtn.style.display = 'none';
-        }
+      updateSyncStatus(null, statusEl, syncBtn, "checking");
+
+      try {
+        const res = await fetch(SYNC_ENDPOINT, { method: "GET" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        updateSyncStatus(data, statusEl, syncBtn);
+      } catch (err) {
+        console.error(err);
+        updateSyncStatus(null, statusEl, syncBtn, "error");
+      }
     }
 
     async function performSync() {
-        const statusEl = document.getElementById("syncStatus");
-        const syncBtn = document.getElementById("syncNowBtn");
-        const origSyncBtn = syncBtn.innerHTML;
-        syncBtn.disabled = true;
-        syncBtn.innerHTML = '⏳';
-        statusEl.className = 'status-pill';
-        statusEl.innerHTML = '<span class="status-indicator"></span><span>Syncing...</span>';
-        statusEl.title = 'Syncing documents...';
+      const statusEl = document.getElementById("syncStatus");
+      const syncBtn = document.getElementById("syncNowBtn");
+      const origSyncBtn = syncBtn.innerHTML;
 
-        try {
-            const res = await fetch(SYNC_ENDPOINT, { method: "POST" });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            updateSyncStatus(data, statusEl, syncBtn);
-            // Show success feedback
-            statusEl.innerHTML += ' ✓';
-            setTimeout(() => {
-                statusEl.innerHTML = '<span class="status-indicator"></span><span>In Sync</span> ✓';
-            }, 200);
-        } catch (err) {
-            console.error(err);
-            statusEl.className = 'status-pill err';
-            statusEl.innerHTML = '<span class="status-indicator"></span><span>Sync Failed</span>';
-            statusEl.title = 'Error syncing documents';
-        } finally {
-            syncBtn.disabled = false;
-            syncBtn.innerHTML = origSyncBtn;
+      syncBtn.disabled = true;
+      syncBtn.innerHTML = "⏳";
+
+      updateSyncStatus(null, statusEl, syncBtn, "syncing");
+
+      try {
+        const res = await fetch(SYNC_ENDPOINT, { method: "POST" });
+
+        if (res.status === 409) {
+          updateSyncStatus(null, statusEl, syncBtn, "in-progress");
+          setTimeout(checkSync, 30000); // poll again in 30 seconds
+          return;
         }
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        updateSyncStatus(data, statusEl, syncBtn);
+
+        // Show success feedback
+        statusEl.innerHTML += " ✓";
+        setTimeout(() => {
+          statusEl.innerHTML =
+            '<span class="status-indicator"></span><span>In Sync</span> ✓';
+        }, 200);
+      } catch (err) {
+        console.error(err);
+        updateSyncStatus(null, statusEl, syncBtn, "error");
+      } finally {
+        syncBtn.disabled = false;
+        syncBtn.innerHTML = origSyncBtn;
+      }
     }
 
-    function updateSyncStatus(data, statusEl, syncBtn) {
-        const lastSynced = data.last_synced_at ? new Date(data.last_synced_at).toLocaleString() : 'Never';
-        
-        if (data && data.is_in_sync === true) {
-            statusEl.className = 'status-pill in';
-            statusEl.innerHTML = '<span class="status-indicator"></span><span>In Sync</span>';
-            statusEl.title = `Sync status: in sync ✓\nLast synced: ${lastSynced}`;
-            syncBtn.style.display = 'none';
-        } else if (data && data.is_in_sync === false) {
-            statusEl.className = 'status-pill out';
-            statusEl.innerHTML = '<span class="status-indicator"></span><span>Out of Sync</span>';
-            statusEl.title = `Sync status: out of sync\nLast synced: ${lastSynced}`;
-            syncBtn.style.display = 'inline-block';
+    function updateSyncStatus(data, statusEl, syncBtn, state = null) {
+      // Helper to update UI based on state or data
+      const lastSynced =
+        data && data.last_synced_at
+          ? new Date(data.last_synced_at).toLocaleString()
+          : "Never";
+
+      // Reset styles before setting
+      syncBtn.style.display = "none"; // default hide button, show selectively below
+
+      if (state === "checking") {
+        statusEl.className = "status-pill";
+        statusEl.innerHTML =
+          '<span class="status-indicator"></span><span>Checking...</span>';
+        statusEl.title = "Sync status: checking...";
+      } else if (state === "syncing") {
+        statusEl.className = "status-pill";
+        statusEl.innerHTML =
+          '<span class="status-indicator"></span><span>Syncing...</span>';
+        statusEl.title = "Syncing documents...";
+      } else if (state === "in-progress") {
+        statusEl.className = "status-pill out";
+        statusEl.innerHTML =
+          '<span class="status-indicator"></span><span>Sync in progress</span>';
+        statusEl.title = "A sync is already running";
+      } else if (state === "error") {
+        statusEl.className = "status-pill err";
+        statusEl.innerHTML =
+          '<span class="status-indicator"></span><span>Error</span>';
+        statusEl.title = "Sync status: error checking status";
+      } else if (data) {
+        // Normal update based on data
+        if (data.is_in_sync === true) {
+          statusEl.className = "status-pill in";
+          statusEl.innerHTML = `<span class="status-indicator"></span><span>In Sync</span>`;
+          statusEl.title = `Sync status: in sync ✓\nLast synced: ${lastSynced}`;
+          syncBtn.style.display = "none";
+        } else if (data.is_in_sync === false) {
+          statusEl.className = "status-pill out";
+          statusEl.innerHTML = `<span class="status-indicator"></span><span>Out of Sync</span>`;
+          statusEl.title = `Sync status: out of sync\nLast synced: ${lastSynced}`;
+          syncBtn.style.display = "inline-block";
         } else {
-            statusEl.className = 'status-pill err';
-            statusEl.innerHTML = '<span class="status-indicator"></span><span>Unknown</span>';
-            statusEl.title = 'Sync status: unknown';
-            syncBtn.style.display = 'none';
+          statusEl.className = "status-pill err";
+          statusEl.innerHTML = `<span class="status-indicator"></span><span>Unknown</span>`;
+          statusEl.title = "Sync status: unknown";
+          syncBtn.style.display = "none";
         }
+      } else {
+        // Fallback UI
+        statusEl.className = "status-pill err";
+        statusEl.innerHTML =
+          '<span class="status-indicator"></span><span>Unknown</span>';
+        statusEl.title = "Sync status: unknown";
+      }
     }
 
     // Auto-check sync status on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        checkSync();
+    document.addEventListener("DOMContentLoaded", function () {
+      checkSync();
     });
 
     // Wire sync button
-    document.getElementById("syncNowBtn").addEventListener("click", function() {
+    document
+      .getElementById("syncNowBtn")
+      .addEventListener("click", function () {
         performSync();
-    });
+      });
 
     // Format and display API response
     function displayResponse(data) {
-        let html = ``;
-        
-        // Calculate confidence based on best source relevance
-        let confidence = 0;
-        if (data.sources && data.sources.length > 0) {
-            const maxRelevance = Math.max(...data.sources.map(source => source.relevance));
-            confidence = Math.round(maxRelevance * 100);
-        }
-        
-        // Determine relevance level
-        const getRelevanceLevel = (score) => {
-            if (score >= 70) return { label: 'Highly Relevant', class: 'high' };
-            if (score >= 40) return { label: 'Moderately Relevant', class: 'medium' };
-            return { label: 'Low Relevance', class: 'low' };
-        };
-        
-        const relevanceInfo = getRelevanceLevel(confidence);
-        
-        // Display answer
-        if (data.answer) {
-            html += `<div class="answer-section">
+      let html = ``;
+
+      // Calculate confidence based on best source relevance
+      let confidence = 0;
+      if (data.sources && data.sources.length > 0) {
+        const maxRelevance = Math.max(
+          ...data.sources.map((source) => source.relevance)
+        );
+        confidence = Math.round(maxRelevance * 100);
+      }
+
+      // Determine relevance level
+      const getRelevanceLevel = (score) => {
+        if (score >= 70) return { label: "Highly Relevant", class: "high" };
+        if (score >= 40)
+          return { label: "Moderately Relevant", class: "medium" };
+        return { label: "Low Relevance", class: "low" };
+      };
+
+      const relevanceInfo = getRelevanceLevel(confidence);
+
+      // Display answer
+      if (data.answer) {
+        html += `<div class="answer-section">
                 <h3>📝 Answer</h3>
                 <p>${data.answer}</p>
                 <div class="confidence-meter">
@@ -684,33 +801,34 @@
                     <div class="confidence-text">${relevanceInfo.label} (${confidence}%)</div>
                 </div>
             </div>`;
-        }
-        
-        // Display sources in expandable div
-        if (data.sources && data.sources.length > 0) {
-            html += `<details>
+      }
+
+      // Display sources in expandable div
+      if (data.sources && data.sources.length > 0) {
+        html += `<details>
                 <summary>📚 Sources (${data.sources.length})</summary>
                 <div style="margin-top: 15px;">`;
-            
-            data.sources.forEach((source, index) => {
-                const fileName = source.file.split('\\').pop();
-                const relevancePercent = (source.relevance * 100).toFixed(1);
-                html += `<div class="source-item">
-                    <div class="source-file">Source ${index + 1}: ${fileName}</div>
+
+        data.sources.forEach((source, index) => {
+          const fileName = source.file.split("\\").pop();
+          const relevancePercent = (source.relevance * 100).toFixed(1);
+          html += `<div class="source-item">
+                    <div class="source-file">Source ${
+                      index + 1
+                    }: ${fileName}</div>
                     <div class="source-relevance">Relevance: ${relevancePercent}%</div>
                     <details>
                         <summary>View content</summary>
                         <div class="source-content">${source.content}</div>
                     </details>
                 </div>`;
-            });
-            
-            html += `</div></details>`;
-        }
-        
-        document.getElementById("response").innerHTML = html;
-        document.getElementById("response").classList.add("visible");
-    }
-</script>
+        });
 
+        html += `</div></details>`;
+      }
+
+      document.getElementById("response").innerHTML = html;
+      document.getElementById("response").classList.add("visible");
+    }
+  </script>
 </html>
