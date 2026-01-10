@@ -516,12 +516,10 @@
         <div class="header-controls">
           <div class="sync-status-container">
             <span class="sync-status-label">Sync Status:</span>
-            <div
-              id="syncStatus"
-              aria-live="polite"
-              class="status-pill"
-              title="Sync status: checking..."
-            ></div>
+            <div id="syncStatus" class="status-pill" aria-live="polite">
+              <span class="status-indicator"></span>
+              <span class="status-text"></span>
+            </div>
             <button
               type="button"
               id="syncNowBtn"
@@ -689,61 +687,119 @@
       }
     }
 
-    function updateSyncStatus(data, statusEl, syncBtn, state = null) {
-      // Helper to update UI based on state or data
-      const lastSynced =
-        data && data.last_synced_at
-          ? new Date(data.last_synced_at).toLocaleString()
-          : "Never";
+    function renderSyncStatus({
+      statusEl,
+      syncBtn,
+      state,
+      title = "",
+      showSyncButton = false,
+    }) {
+      const textEl = statusEl.querySelector(".status-text");
 
-      // Reset styles before setting
-      syncBtn.style.display = "none"; // default hide button, show selectively below
+      statusEl.className = "status-pill";
+      textEl.textContent = "";
+
+      if (syncBtn) {
+        syncBtn.style.display = showSyncButton ? "inline-block" : "none";
+      }
+
+      switch (state) {
+        case "checking":
+          textEl.textContent = "Checking...";
+          break;
+        case "syncing":
+          textEl.textContent = "Syncing...";
+          break;
+        case "in-progress":
+          statusEl.classList.add("out");
+          textEl.textContent = "Sync in progress";
+          break;
+        case "in":
+          statusEl.classList.add("in");
+          textEl.textContent = "In Sync";
+          break;
+        case "out":
+          statusEl.classList.add("out");
+          textEl.textContent = "Out of Sync";
+          break;
+        case "error":
+          statusEl.classList.add("err");
+          textEl.textContent = "Error";
+          break;
+        default:
+          statusEl.classList.add("err");
+          textEl.textContent = "Unknown";
+      }
+
+      statusEl.title = title;
+    }
+
+    function updateSyncStatus(data, statusEl, syncBtn, state = null) {
+      const lastSynced = data?.last_synced_at
+        ? new Date(data.last_synced_at).toLocaleString()
+        : "Never";
 
       if (state === "checking") {
-        statusEl.className = "status-pill";
-        statusEl.innerHTML =
-          '<span class="status-indicator"></span><span>Checking...</span>';
-        statusEl.title = "Sync status: checking...";
-      } else if (state === "syncing") {
-        statusEl.className = "status-pill";
-        statusEl.innerHTML =
-          '<span class="status-indicator"></span><span>Syncing...</span>';
-        statusEl.title = "Syncing documents...";
-      } else if (state === "in-progress") {
-        statusEl.className = "status-pill out";
-        statusEl.innerHTML =
-          '<span class="status-indicator"></span><span>Sync in progress</span>';
-        statusEl.title = "A sync is already running";
-      } else if (state === "error") {
-        statusEl.className = "status-pill err";
-        statusEl.innerHTML =
-          '<span class="status-indicator"></span><span>Error</span>';
-        statusEl.title = "Sync status: error checking status";
-      } else if (data) {
-        // Normal update based on data
-        if (data.is_in_sync === true) {
-          statusEl.className = "status-pill in";
-          statusEl.innerHTML = `<span class="status-indicator"></span><span>In Sync</span>`;
-          statusEl.title = `Sync status: in sync ✓\nLast synced: ${lastSynced}`;
-          syncBtn.style.display = "none";
-        } else if (data.is_in_sync === false) {
-          statusEl.className = "status-pill out";
-          statusEl.innerHTML = `<span class="status-indicator"></span><span>Out of Sync</span>`;
-          statusEl.title = `Sync status: out of sync\nLast synced: ${lastSynced}`;
-          syncBtn.style.display = "inline-block";
-        } else {
-          statusEl.className = "status-pill err";
-          statusEl.innerHTML = `<span class="status-indicator"></span><span>Unknown</span>`;
-          statusEl.title = "Sync status: unknown";
-          syncBtn.style.display = "none";
-        }
-      } else {
-        // Fallback UI
-        statusEl.className = "status-pill err";
-        statusEl.innerHTML =
-          '<span class="status-indicator"></span><span>Unknown</span>';
-        statusEl.title = "Sync status: unknown";
+        return renderSyncStatus({
+          statusEl,
+          syncBtn,
+          state: "checking",
+          title: "Sync status: checking...",
+        });
       }
+
+      if (state === "syncing") {
+        return renderSyncStatus({
+          statusEl,
+          syncBtn,
+          state: "syncing",
+          title: "Syncing documents...",
+        });
+      }
+
+      if (state === "in-progress") {
+        return renderSyncStatus({
+          statusEl,
+          syncBtn,
+          state: "in-progress",
+          title: "A sync is already running",
+        });
+      }
+
+      if (state === "error") {
+        return renderSyncStatus({
+          statusEl,
+          syncBtn,
+          state: "error",
+          title: "Sync status: error checking status",
+        });
+      }
+
+      if (data?.is_in_sync === true) {
+        return renderSyncStatus({
+          statusEl,
+          syncBtn,
+          state: "in",
+          title: `Sync status: in sync ✓\nLast synced: ${lastSynced}`,
+        });
+      }
+
+      if (data?.is_in_sync === false) {
+        return renderSyncStatus({
+          statusEl,
+          syncBtn,
+          state: "out",
+          title: `Sync status: out of sync\nLast synced: ${lastSynced}`,
+          showSyncButton: true,
+        });
+      }
+
+      renderSyncStatus({
+        statusEl,
+        syncBtn,
+        state: "unknown",
+        title: "Sync status: unknown",
+      });
     }
 
     // Auto-check sync status on page load
@@ -760,7 +816,9 @@
 
     // Format and display API response
     function displayResponse(data) {
-      let html = ``;
+      const responseEl = document.getElementById("response");
+      responseEl.innerHTML = "";
+      responseEl.classList.add("visible");
 
       // Calculate confidence based on best source relevance
       let confidence = 0;
@@ -781,47 +839,89 @@
 
       const relevanceInfo = getRelevanceLevel(confidence);
 
-      // Display answer
+      /* ---------- Answer Section ---------- */
       if (data.answer) {
-        html += `<div class="answer-section">
-                <h3>📝 Answer</h3>
-                <p>${data.answer}</p>
-                <div class="confidence-meter">
-                    <div class="confidence-label">Source Relevance</div>
-                    <div class="confidence-bar">
-                        <div class="confidence-fill ${relevanceInfo.class}" style="width: ${confidence}%"></div>
-                    </div>
-                    <div class="confidence-text">${relevanceInfo.label} (${confidence}%)</div>
-                </div>
-            </div>`;
+        const answerSection = document.createElement("div");
+        answerSection.className = "answer-section";
+
+        const title = document.createElement("h3");
+        title.textContent = "📝 Answer";
+
+        const answerP = document.createElement("p");
+        answerP.textContent = data.answer; // SAFE
+
+        const confidenceMeter = document.createElement("div");
+        confidenceMeter.className = "confidence-meter";
+
+        const confidenceLabel = document.createElement("div");
+        confidenceLabel.className = "confidence-label";
+        confidenceLabel.textContent = "Source Relevance";
+
+        const confidenceBar = document.createElement("div");
+        confidenceBar.className = "confidence-bar";
+
+        const confidenceFill = document.createElement("div");
+        confidenceFill.className = `confidence-fill ${relevanceInfo.class}`;
+        confidenceFill.style.width = `${confidence}%`;
+
+        const confidenceText = document.createElement("div");
+        confidenceText.className = "confidence-text";
+        confidenceText.textContent = `${relevanceInfo.label} (${confidence}%)`;
+
+        confidenceBar.appendChild(confidenceFill);
+        confidenceMeter.append(confidenceLabel, confidenceBar, confidenceText);
+
+        answerSection.append(title, answerP, confidenceMeter);
+        responseEl.appendChild(answerSection);
       }
 
-      // Display sources in expandable div
+      /* ---------- Sources Section ---------- */
       if (data.sources && data.sources.length > 0) {
-        html += `<details>
-                <summary>📚 Sources (${data.sources.length})</summary>
-                <div style="margin-top: 15px;">`;
+        const details = document.createElement("details");
+
+        const summary = document.createElement("summary");
+        summary.textContent = `📚 Sources (${data.sources.length})`;
+
+        const sourcesContainer = document.createElement("div");
+        sourcesContainer.style.marginTop = "15px";
 
         data.sources.forEach((source, index) => {
-          const fileName = source.file.split("\\").pop();
-          const relevancePercent = (source.relevance * 100).toFixed(1);
-          html += `<div class="source-item">
-                    <div class="source-file">Source ${
-                      index + 1
-                    }: ${fileName}</div>
-                    <div class="source-relevance">Relevance: ${relevancePercent}%</div>
-                    <details>
-                        <summary>View content</summary>
-                        <div class="source-content">${source.content}</div>
-                    </details>
-                </div>`;
+          const sourceItem = document.createElement("div");
+          sourceItem.className = "source-item";
+
+          const fileName =
+            typeof source.file === "string"
+              ? source.file.split("\\").pop()
+              : "Unknown";
+
+          const sourceFile = document.createElement("div");
+          sourceFile.className = "source-file";
+          sourceFile.textContent = `Source ${index + 1}: ${fileName}`;
+
+          const sourceRelevance = document.createElement("div");
+          sourceRelevance.className = "source-relevance";
+          sourceRelevance.textContent = `Relevance: ${(
+            source.relevance * 100
+          ).toFixed(1)}%`;
+
+          const sourceDetails = document.createElement("details");
+
+          const sourceSummary = document.createElement("summary");
+          sourceSummary.textContent = "View content";
+
+          const sourceContent = document.createElement("div");
+          sourceContent.className = "source-content";
+          sourceContent.textContent = source.content; // SAFE
+
+          sourceDetails.append(sourceSummary, sourceContent);
+          sourceItem.append(sourceFile, sourceRelevance, sourceDetails);
+
+          sourcesContainer.appendChild(sourceItem);
         });
 
-        html += `</div></details>`;
+        details.append(summary, sourcesContainer);
+        responseEl.appendChild(details);
       }
-
-      document.getElementById("response").innerHTML = html;
-      document.getElementById("response").classList.add("visible");
     }
   </script>
 </html>
