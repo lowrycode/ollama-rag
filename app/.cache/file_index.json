@@ -1,35 +1,110 @@
 {
-  "last_synced_at": "2026-01-10T15:48:37+00:00",
+  "last_synced_at": "2026-01-10T22:08:55+00:00",
   "files": {
-    "C:\\code\\ollama-rag\\app\\data\\AQA-7404-7405-GCSE-A-LEVEL-PROGRESSION-ANSWERS.PDF": {
-      "file_id": "04783d0151e970cf097b4c93977107b3bcf8ad47",
-      "mtime": 1762011031.2053263,
-      "size": 703883
+    "C:\\code\\ollama-rag\\app\\data\\Admissions_priority_for_children_adopted_from_state_care_outside_of_England.pdf": {
+      "file_id": "355cf5ca9f76e60ae57f3c02b25e706d1dc1e8e7",
+      "mtime": 1768080821.878708,
+      "size": 194198
     },
-    "C:\\code\\ollama-rag\\app\\data\\Biography.txt": {
-      "file_id": "1e66c2d04b6f5ffc2204d6053fe1b71bde22d8b1",
-      "mtime": 1767974934.4163783,
-      "size": 419095
+    "C:\\code\\ollama-rag\\app\\data\\Admission_of_children_of_crown_servants_-_explanatory_note.pdf": {
+      "file_id": "50d0194d9b28a5482646264a56513c3758aab8c0",
+      "mtime": 1768080799.716249,
+      "size": 128363
     },
-    "C:\\code\\ollama-rag\\app\\data\\Instrumental_Analysis_Topic_Guide.docx": {
-      "file_id": "9fb3b6d01f758660ea14f8b94adb8b43b7c23f64",
-      "mtime": 1767969676.2497566,
-      "size": 1835560
+    "C:\\code\\ollama-rag\\app\\data\\Arranging_Alternative_Provision_-_A_Guide_for_Local_Authorities_and_Schools.pdf": {
+      "file_id": "7c845ceeb5e660804e6d902dab555ffa3aa98efe",
+      "mtime": 1768080854.3148584,
+      "size": 529144
     },
-    "C:\\code\\ollama-rag\\app\\data\\Attention Is All You Need - 2017 (1706.03762).pdf": {
-      "file_id": "afc9e8b20b7e428405637b6f8c7df9576b379463",
-      "mtime": 1767738837.3508966,
-      "size": 2215244
+    "C:\\code\\ollama-rag\\app\\data\\Behaviour_and_discipline_in_schools_guidance_for_governing_bodies.pdf": {
+      "file_id": "b94bb4fde7f76f2dd364e31c66912197a9fc11df",
+      "mtime": 1768080868.2546768,
+      "size": 248149
     },
-    "C:\\code\\ollama-rag\\app\\data\\A Course in Machine Learning (ciml-v0_9-all).pdf": {
-      "file_id": "55db7af50018e74a058468d93a35c0d6817f482d",
-      "mtime": 1767818861.0918398,
-      "size": 2636899
+    "C:\\code\\ollama-rag\\app\\data\\Change_of_land_use_due_to_an_academy_conversion.pdf": {
+      "file_id": "06140f3d62941437e72053ee97b66ed54f975399",
+      "mtime": 1768080636.1507928,
+      "size": 87838
     },
-    "C:\\code\\ollama-rag\\app\\data\\A History of Modern 64-bit Computing - Feb 2007 (CSEP590A).pdf": {
-      "file_id": "ba0f2a864ff3392f30ac94ddc52a9a6e75589e6b",
-      "mtime": 1767738760.3831353,
-      "size": 568047
+    "C:\\code\\ollama-rag\\app\\data\\CME_policy_and_procedures_checklist.pdf": {
+      "file_id": "0338709a0071da739bd744db73a4a7d0572900b2",
+      "mtime": 1768080898.4801333,
+      "size": 298983
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Early_years_foundation_stage_statutory_framework_-_for_group_and_school-based_providers.pdf.pdf": {
+      "file_id": "3ece76925b22fa5b385611a1f40cc362a04ce1f0",
+      "mtime": 1768081137.842259,
+      "size": 727920
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Early_years_foundation_stage_statutory_framework_for_childminders_.pdf": {
+      "file_id": "521fb5fb5f22d7af7cc7cd80df76a33ae13d0930",
+      "mtime": 1768081126.5729167,
+      "size": 637293
+    },
+    "C:\\code\\ollama-rag\\app\\data\\FAP_Guidance.pdf": {
+      "file_id": "2be3a8e646b07f4da3239b57a572e52d992dd351",
+      "mtime": 1768080812.6355827,
+      "size": 203480
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Guidance_on_the_School_Governance_Collaboration_Regs_2003.doc.pdf": {
+      "file_id": "985cd3c77829d3f4407b88f8777f234f3aae8624",
+      "mtime": 1768081195.8612182,
+      "size": 164229
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Master_final_national_curriculum_28_Nov.pdf": {
+      "file_id": "c7138a032d190e9d0ff8f1a929acf309a34697d9",
+      "mtime": 1768080120.4734857,
+      "size": 2918955
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Post16_transport_guidance.pdf": {
+      "file_id": "899594e29be73163586378439d7066c923b4a732",
+      "mtime": 1768080674.008055,
+      "size": 468545
+    },
+    "C:\\code\\ollama-rag\\app\\data\\School_admissions_code_2021.pdf": {
+      "file_id": "6a55733548757fb55a21688633f4736f2f709f3d",
+      "mtime": 1768080773.1449485,
+      "size": 571465
+    },
+    "C:\\code\\ollama-rag\\app\\data\\School_Admission_Appeals_Code_2022.pdf": {
+      "file_id": "0ff9c25b48b4837929ff931a32279ae0839e5dd4",
+      "mtime": 1768080839.434505,
+      "size": 283675
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Summary_of_responsibilities_CME_guidance_2025.pdf": {
+      "file_id": "a679dd57537c90a9f71b6eefad25e37bebb3e964",
+      "mtime": 1768080888.6369002,
+      "size": 376147
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Summary_table_of_responsibilities_for_school_attendance_-_August_2024.pdf": {
+      "file_id": "56a3d36b8537fc781cf783015147404022dc456b",
+      "mtime": 1768080953.016781,
+      "size": 270004
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Support_and_intervention_in_schools.pdf": {
+      "file_id": "cddccfa88c83cbc823f83f3fb516138aa30726ed",
+      "mtime": 1768080713.8285737,
+      "size": 547625
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Suspensions_and_permanent_exclusions_guidance.pdf": {
+      "file_id": "ee4d789a7604cf5a105d3429602729f71a6802db",
+      "mtime": 1768080924.778775,
+      "size": 627919
+    },
+    "C:\\code\\ollama-rag\\app\\data\\The_constitution_of_governing_bodies_of_maintained_schools_2017.pdf": {
+      "file_id": "95c68f5cb207892843566595b67d7ac7156098de",
+      "mtime": 1768081169.717687,
+      "size": 292374
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Travel_to_school_for_children_of_compulsory_school_age.pdf": {
+      "file_id": "42d2c05f8ab61678d2dca3cae6b1930199b62e23",
+      "mtime": 1768080653.1282554,
+      "size": 567624
+    },
+    "C:\\code\\ollama-rag\\app\\data\\Working_together_to_improve_school_attendance_-_August_2024.pdf": {
+      "file_id": "64ff8ade23bc0c8f6fbcbf12284e3323fdf42fa3",
+      "mtime": 1768080944.4193797,
+      "size": 965177
     }
   }
 }
