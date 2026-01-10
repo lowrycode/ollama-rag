@@ -680,13 +680,6 @@
 
         const data = await res.json();
         updateSyncStatus(data, statusEl, syncBtn);
-
-        // Show success feedback
-        statusEl.innerHTML += " ✓";
-        setTimeout(() => {
-          statusEl.innerHTML =
-            '<span class="status-indicator"></span><span>In Sync</span> ✓';
-        }, 200);
       } catch (err) {
         console.error(err);
         updateSyncStatus(null, statusEl, syncBtn, "error");
