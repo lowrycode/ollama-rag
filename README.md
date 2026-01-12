@@ -2,6 +2,13 @@
 
 A Retrieval Augmented Generation (RAG) system that combines Ollama LLM with Langchain and Chroma vector database to answer questions based on custom documents.
 
+<a href="https://youtu.be/Rd_iVqD2tvw">
+  <img src="assets/rag_demo_shortened.gif" width="600" alt="RAG Demo">
+</a>
+
+▶ *Click the animation to watch the full 1-minute demo*
+
+
 ## Overview
 
 This project implements a complete RAG pipeline with:
