@@ -1,5 +1,5 @@
 {
-  "last_synced_at": "2026-01-10T22:08:55+00:00",
+  "last_synced_at": "2026-01-12T11:51:37+00:00",
   "files": {
     "C:\\code\\ollama-rag\\app\\data\\Admissions_priority_for_children_adopted_from_state_care_outside_of_England.pdf": {
       "file_id": "355cf5ca9f76e60ae57f3c02b25e706d1dc1e8e7",
@@ -105,6 +105,11 @@
       "file_id": "64ff8ade23bc0c8f6fbcbf12284e3323fdf42fa3",
       "mtime": 1768080944.4193797,
       "size": 965177
+    },
+    "C:\\code\\ollama-rag\\app\\data\\toolkit-for-schools-communicating-with-families-to-support-attendance.txt": {
+      "file_id": "444e31b9d888ccb642f26b7a99a9985da6339f66",
+      "mtime": 1768081045.1150944,
+      "size": 16694
     }
   }
 }
